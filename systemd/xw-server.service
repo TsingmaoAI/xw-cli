@@ -1,0 +1,40 @@
+[Unit]
+Description=XW AI Inference Server
+Documentation=https://github.com/tsingmao/xw
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xw
+Group=xw
+WorkingDirectory=/opt/xw
+ExecStart=/usr/local/bin/xw serve --host 0.0.0.0 --port 8080
+
+# Restart configuration
+Restart=on-failure
+RestartSec=5s
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/xw /var/log/xw
+
+# Environment variables
+Environment="XW_HOME=/opt/xw"
+Environment="XW_LOG_LEVEL=info"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xw
+
+[Install]
+WantedBy=multi-user.target
+
