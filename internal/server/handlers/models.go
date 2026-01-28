@@ -164,10 +164,21 @@ func (h *Handler) ShowModel(w http.ResponseWriter, r *http.Request) {
 	response := make(map[string]interface{})
 	response["model_id"] = spec.ID
 
-	// Try to read config.json from model directory
+	// Use ModelSpec values first (most accurate)
+	if spec.Parameters > 0 {
+		response["parameters"] = spec.Parameters
+	}
+	if spec.ContextLength > 0 {
+		response["context_length"] = float64(spec.ContextLength)
+	}
+	if spec.EmbeddingLength > 0 {
+		response["embedding_length"] = float64(spec.EmbeddingLength)
+	}
+	
+	// Try to read config.json from model directory for additional info
 	configData := h.readModelConfig(modelPath)
 	
-	// Extract information from config.json
+	// Extract information from config.json (fallback or supplement)
 	if configData != nil {
 		// Model architecture info
 		if arch, ok := configData["architectures"].([]interface{}); ok && len(arch) > 0 {
@@ -178,23 +189,27 @@ func (h *Handler) ShowModel(w http.ResponseWriter, r *http.Request) {
 			response["family"] = family
 		}
 		
-		// Parameters (calculate from hidden size and layers if available)
-		if hiddenSize, ok := configData["hidden_size"].(float64); ok {
-			if numLayers, ok := configData["num_hidden_layers"].(float64); ok {
-				// Rough estimation: params ≈ hidden_size² × num_layers × 12 / 1e9
-				params := hiddenSize * hiddenSize * numLayers * 12 / 1e9
-				response["parameters"] = params
+		// Use config.json values only if not set in ModelSpec
+		if _, hasParams := response["parameters"]; !hasParams {
+			if hiddenSize, ok := configData["hidden_size"].(float64); ok {
+				if numLayers, ok := configData["num_hidden_layers"].(float64); ok {
+					// Rough estimation: params ≈ hidden_size² × num_layers × 12 / 1e9
+					params := hiddenSize * hiddenSize * numLayers * 12 / 1e9
+					response["parameters"] = params
+				}
 			}
 		}
 		
-		// Context length
-		if maxPos, ok := configData["max_position_embeddings"].(float64); ok {
-			response["context_length"] = maxPos
+		if _, hasCtx := response["context_length"]; !hasCtx {
+			if maxPos, ok := configData["max_position_embeddings"].(float64); ok {
+				response["context_length"] = maxPos
+			}
 		}
 		
-		// Embedding length
-		if hiddenSize, ok := configData["hidden_size"].(float64); ok {
-			response["embedding_length"] = hiddenSize
+		if _, hasEmb := response["embedding_length"]; !hasEmb {
+			if hiddenSize, ok := configData["hidden_size"].(float64); ok {
+				response["embedding_length"] = hiddenSize
+			}
 		}
 		
 		// Quantization

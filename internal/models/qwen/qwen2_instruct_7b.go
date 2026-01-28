@@ -12,6 +12,11 @@ var Qwen2_Instruct_7B = &models.ModelSpec{
 	ID:       "qwen2.5-7b-instruct",
 	SourceID: "Qwen/Qwen2.5-7B-Instruct",
 
+	// Model specifications
+	Parameters:      7.6,   // 7.61B parameters
+	ContextLength:   131072, // 128K context
+	EmbeddingLength: 3584,
+
 	// Supported hardware
 	SupportedDevices: []api.DeviceType{
 		api.DeviceTypeAscend,

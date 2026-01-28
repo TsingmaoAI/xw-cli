@@ -12,6 +12,11 @@ var Qwen2_0_5B = &models.ModelSpec{
 	ID:       "qwen2-0.5b",
 	SourceID: "Qwen/Qwen2-0.5B",
 
+	// Model specifications
+	Parameters:      0.5,  // 494M parameters
+	ContextLength:   32768,
+	EmbeddingLength: 896,
+
 	// Supported hardware
 	SupportedDevices: []api.DeviceType{
 		api.DeviceTypeAscend,
