@@ -215,15 +215,15 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 	}
 	env["MODEL_NAME"] = modelName
 
+	// Configure SERVER_PORT environment variable for MindIE
+	// MindIE will listen on the port specified by SERVER_PORT (default: 8000)
+	env["SERVER_PORT"] = "8000"
+
 	// Convert environment map to Docker format (KEY=VALUE strings)
 	envList := make([]string, 0, len(env))
 	for k, v := range env {
 		envList = append(envList, fmt.Sprintf("%s=%s", k, v))
 	}
-
-	// Configure SERVER_PORT environment variable for MindIE
-	// MindIE will listen on the port specified by SERVER_PORT (default: 8000)
-	env["SERVER_PORT"] = "8000"
 
 	// Configure port mapping for inference API
 	// Use port 8000 internally (same as vLLM) for consistency
