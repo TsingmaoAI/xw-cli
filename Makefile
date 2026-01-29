@@ -200,11 +200,30 @@ release: clean ## Build release binaries for multiple platforms
 	# Linux arm64
 	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BIN_DIR)/release/xw-linux-arm64 ./cmd/xw
 	
-	# Linux loong64 (for Loongson)
-	GOOS=linux GOARCH=loong64 go build $(LDFLAGS) -o $(BIN_DIR)/release/xw-linux-loong64 ./cmd/xw
-	
 	@echo "✓ Release binaries built in $(BIN_DIR)/release/"
 	@ls -lh $(BIN_DIR)/release/
+
+.PHONY: package
+package: release ## Create distributable packages (tar.gz)
+	@echo "Creating packages..."
+	@chmod +x scripts/package.sh
+	VERSION=$(VERSION) bash scripts/package.sh
+	@echo "✓ Packages created in $(BIN_DIR)/packages/"
+
+.PHONY: package-rpm
+package-rpm: release ## Create RPM packages (requires rpmbuild)
+	@echo "Creating RPM packages..."
+	@echo "Note: This requires rpmbuild to be installed"
+	@echo "Install: sudo yum install rpm-build (CentOS/RHEL)"
+	@echo "         sudo apt install rpm (Debian/Ubuntu)"
+	@# TODO: Implement RPM packaging
+
+.PHONY: package-deb
+package-deb: release ## Create DEB packages (requires dpkg-deb)
+	@echo "Creating DEB packages..."
+	@echo "Note: This requires dpkg-deb to be installed"
+	@echo "Install: sudo apt install dpkg-dev"
+	@# TODO: Implement DEB packaging
 
 .PHONY: check
 check: fmt vet lint test ## Run all checks (fmt, vet, lint, test)
