@@ -141,12 +141,13 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 		}
 		
 		detectedChip := DetectedChip{
-			VendorID:   device.VendorID,
-			DeviceID:   device.DeviceID,
-			BusAddress: device.BusAddress,
-			ModelName:  chip.ModelName,
-			DeviceType: chip.DeviceType,
-			Generation: chip.Generation,
+			VendorID:     device.VendorID,
+			DeviceID:     device.DeviceID,
+			BusAddress:   device.BusAddress,
+			ModelName:    chip.ModelName,
+			ConfigKey:    chip.ConfigKey,
+			DeviceType:   chip.DeviceType,
+			Generation:   chip.Generation,
 			Capabilities: chip.Capabilities,
 		}
 		
@@ -170,6 +171,9 @@ type DetectedChip struct {
 	
 	// ModelName is the chip model name
 	ModelName string
+	
+	// ConfigKey is the key used in runtime configuration
+	ConfigKey string
 	
 	// DeviceType is the xw device type
 	DeviceType api.DeviceType

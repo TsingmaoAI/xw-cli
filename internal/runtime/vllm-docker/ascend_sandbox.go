@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tsingmao/xw/internal/config"
 	"github.com/tsingmao/xw/internal/runtime"
 )
 
@@ -186,10 +187,32 @@ func (s *AscendSandbox) GetCapabilities() []string {
 
 // GetDefaultImage returns the default Docker image for Ascend vLLM.
 //
+// This method automatically selects the appropriate image based on:
+//   - Chip model (e.g., Ascend 910B vs 310P) from device information
+//   - System architecture (ARM64 vs x86_64) detected automatically
+//
+// The image is looked up from the runtime_images.yaml configuration file.
+// If the configuration is not available or the image is not found, an error is returned.
+//
+// Parameters:
+//   - devices: List of devices (uses first device's ModelName for chip identification)
+//
 // Returns:
-//   - Default Ascend vLLM image URL
-func (s *AscendSandbox) GetDefaultImage() string {
-	return "quay.io/ascend/vllm-ascend:v0.11.0rc0"
+//   - Docker image URL for vLLM on Ascend NPU
+//   - Error if image configuration is not found
+func (s *AscendSandbox) GetDefaultImage(devices []runtime.DeviceInfo) (string, error) {
+	// Load runtime images configuration
+	cfg := config.NewDefaultConfig()
+	if err := cfg.EnsureDirectories(); err != nil {
+		return "", fmt.Errorf("failed to ensure config directories: %w", err)
+	}
+	
+	runtimeImages, err := cfg.GetOrCreateRuntimeImagesConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to load runtime images config: %w", err)
+	}
+	
+	return runtime.GetImageForEngine(runtimeImages, devices, "vllm")
 }
 
 // GetDockerRuntime returns the Docker runtime to use for Ascend devices.

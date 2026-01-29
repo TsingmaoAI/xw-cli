@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	runtimePkg "runtime"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 
+	"github.com/tsingmao/xw/internal/device"
 	"github.com/tsingmao/xw/internal/logger"
 )
 
@@ -764,14 +766,22 @@ type DeviceSandbox interface {
 	// with device-specific drivers and libraries pre-installed. This method
 	// provides a sensible default that can be overridden by users.
 	//
+	// The method receives device information to determine the appropriate image
+	// based on the specific chip model (e.g., Ascend 910B vs 310P) and system
+	// architecture (ARM64 vs x86_64).
+	//
 	// Image Guidelines:
 	//   - Use official or verified images when available
 	//   - Pin to specific versions for reproducibility
 	//   - Include full registry path for clarity
 	//
+	// Parameters:
+	//   - devices: List of devices to get the image for
+	//
 	// Returns:
 	//   - Docker image URL (e.g., "quay.io/ascend/vllm-ascend:v0.11.0rc0")
-	GetDefaultImage() string
+	//   - Error if image configuration is not found or invalid
+	GetDefaultImage(devices []DeviceInfo) (string, error)
 
 	// GetDockerRuntime returns the Docker runtime to use for this device type.
 	//
@@ -801,5 +811,84 @@ type DeviceSandbox interface {
 //   hostConfig.Init = BoolPtr(true)
 func BoolPtr(b bool) *bool {
 	return &b
+}
+
+// GetImageForEngine is a helper function to get Docker image for specific engine.
+//
+// This function encapsulates the common logic for sandbox implementations to get
+// the appropriate Docker image based on device information and engine type. It:
+//   1. Extracts chip model name from device list
+//   2. Maps model name to configuration key
+//   3. Auto-detects system architecture
+//   4. Looks up image from RuntimeImagesConfig
+//   5. Returns error if any step fails (no fallback)
+//
+// This is used by both vLLM and MindIE sandbox implementations to avoid code duplication.
+//
+// Parameters:
+//   - runtimeImages: RuntimeImagesConfig instance (as interface{} to avoid import cycle)
+//   - devices: List of devices (uses first device's ModelName for chip identification)
+//   - engineName: Inference engine name (e.g., "vllm", "mindie")
+//
+// Returns:
+//   - Docker image URL if found
+//   - Error if configuration is invalid or image not found
+func GetImageForEngine(configMap map[string]map[string]map[string]string, devices []DeviceInfo, engineName string) (string, error) {
+	if configMap == nil {
+		return "", fmt.Errorf("invalid runtime images configuration")
+	}
+	
+	if len(devices) == 0 {
+		return "", fmt.Errorf("no devices provided")
+	}
+	
+	// Get chip model name from first device
+	chipModelName := devices[0].ModelName
+	if chipModelName == "" {
+		return "", fmt.Errorf("device model name is empty")
+	}
+	
+	// Map chip model name to configuration key using device package
+	configKey, err := device.GetConfigKeyByModelName(chipModelName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get config key: %w", err)
+	}
+	
+	// Get image for this chip model and engine (auto-detect architecture)
+	// We need to call the GetImageForChipAndEngineAuto logic inline to avoid import cycle
+	arch, err := getSystemArch()
+	if err != nil {
+		return "", fmt.Errorf("failed to detect system architecture: %w", err)
+	}
+	
+	engineMap, ok := configMap[configKey]
+	if !ok {
+		return "", fmt.Errorf("chip model %s not found in configuration", configKey)
+	}
+	
+	archMap, ok := engineMap[engineName]
+	if !ok {
+		return "", fmt.Errorf("engine %s not found for chip model %s", engineName, configKey)
+	}
+	
+	image, ok := archMap[arch]
+	if !ok {
+		return "", fmt.Errorf("architecture %s not found for chip model %s and engine %s", arch, configKey, engineName)
+	}
+	
+	logger.Debug("Selected image for %s (%s): %s", chipModelName, engineName, image)
+	return image, nil
+}
+
+// getSystemArch returns the current system architecture
+func getSystemArch() (string, error) {
+	switch runtimePkg.GOARCH {
+	case "arm64", "aarch64":
+		return "arm64", nil
+	case "amd64", "x86_64":
+		return "amd64", nil
+	default:
+		return "", fmt.Errorf("unsupported architecture: %s", runtimePkg.GOARCH)
+	}
 }
 

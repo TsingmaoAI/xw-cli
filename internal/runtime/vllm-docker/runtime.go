@@ -196,14 +196,23 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 	
 	// Determine Docker image to use
 	// Priority: params.ExtraConfig["image"] > device-specific default
-	imageName := sandbox.GetDefaultImage()
+	var imageName string
 	if img, ok := params.ExtraConfig["image"]; ok {
 		if imgStr, ok := img.(string); ok {
 			imageName = imgStr
+			logger.Info("Using custom Docker image: %s", imageName)
 		}
 	}
 	
-	logger.Info("Using Docker image: %s", imageName)
+	if imageName == "" {
+		// Get image from configuration
+		var err error
+		imageName, err = sandbox.GetDefaultImage(params.Devices)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Docker image: %w", err)
+		}
+		logger.Info("Using configured Docker image: %s", imageName)
+	}
 	
 	// Determine vLLM command to execute
 	// Priority: params.ExtraConfig["command"] > default vLLM serve command

@@ -2,6 +2,8 @@
 package device
 
 import (
+	"fmt"
+	
 	"github.com/tsingmao/xw/internal/api"
 )
 
@@ -27,6 +29,9 @@ type ChipModel struct {
 	
 	// ModelName is the human-readable model name
 	ModelName string
+	
+	// ConfigKey is the key used in runtime configuration (e.g., "ascend-910b")
+	ConfigKey string
 	
 	// DeviceType is the corresponding xw device type
 	DeviceType api.DeviceType
@@ -85,11 +90,24 @@ var KnownChips = []ChipModel{
 		VendorID:   "0x19e5",
 		DeviceID:   "0xd802",
 		ModelName:  "Ascend 910B",
+		ConfigKey:  "ascend-910b",
 		DeviceType: api.DeviceTypeAscend,
 		Generation: "Ascend 9xx",
 		Capabilities: []string{
 			"int8", "int16", "fp16", "fp32",
 			"inference", "training",
+		},
+	},
+	{
+		VendorID:   "0x19e5",
+		DeviceID:   "0xd500",
+		ModelName:  "Ascend 310P",
+		ConfigKey:  "ascend-310p",
+		DeviceType: api.DeviceTypeAscend,
+		Generation: "Ascend 3xx",
+		Capabilities: []string{
+			"int8", "int16", "fp16", "fp32",
+			"inference",
 		},
 	},
 	// TODO: Add more chip models as they are verified
@@ -184,5 +202,32 @@ func GetChipsByDeviceType(deviceType api.DeviceType) []ChipModel {
 //   - true if the chip is known and supported
 func IsKnownChip(vendorID, deviceID string) bool {
 	return GetChipByID(vendorID, deviceID) != nil
+}
+
+// GetConfigKeyByModelName returns the configuration key for a chip model name.
+//
+// This function looks up the ConfigKey for a given ModelName from the KnownChips list.
+// The ConfigKey is used in runtime configuration files (e.g., runtime_images.yaml).
+//
+// Parameters:
+//   - modelName: Human-readable chip model name (e.g., "Ascend 910B", "Ascend 310P")
+//
+// Returns:
+//   - Configuration key (e.g., "ascend-910b", "ascend-310p")
+//   - Error if the model name is not found
+//
+// Example:
+//   configKey, err := GetConfigKeyByModelName("Ascend 310P")
+//   // Returns: "ascend-310p", nil
+func GetConfigKeyByModelName(modelName string) (string, error) {
+	for _, chip := range KnownChips {
+		if chip.ModelName == modelName {
+			if chip.ConfigKey == "" {
+				return "", fmt.Errorf("chip model %s has no config key defined", modelName)
+			}
+			return chip.ConfigKey, nil
+		}
+	}
+	return "", fmt.Errorf("unknown chip model: %s", modelName)
 }
 

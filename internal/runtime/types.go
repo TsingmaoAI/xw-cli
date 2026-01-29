@@ -42,6 +42,7 @@ type DeviceInfo struct {
 	PCIAddress string
 	DevicePath string
 	ModelName  string
+	ConfigKey  string // Configuration key for runtime_images.yaml lookup
 	Properties map[string]string
 }
 

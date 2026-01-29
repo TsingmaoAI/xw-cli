@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tsingmao/xw/internal/config"
 	"github.com/tsingmao/xw/internal/runtime"
 )
 
@@ -217,22 +218,32 @@ func (s *AscendSandbox) GetCapabilities() []string {
 
 // GetDefaultImage returns the default Docker image for MindIE with Ascend support.
 //
-// The default image includes:
-//   - MindIE inference engine version 2.2.RC1
-//   - Support for Ascend 800I-A2 NPUs
-//   - Python 3.11 runtime
-//   - OpenEuler 24.03 LTS base OS
+// This method automatically selects the appropriate image based on:
+//   - Chip model (e.g., Ascend 910B vs 310P) from device information
+//   - System architecture (ARM64 vs x86_64) detected automatically
 //
-// Image Version Components:
-//   - 2.2.RC1: MindIE version
-//   - 800I-A2: Ascend NPU model support
-//   - py311: Python 3.11
-//   - openeuler24.03-lts: OpenEuler 24.03 LTS base
+// The image is looked up from the runtime_images.yaml configuration file.
+// If the configuration is not available or the image is not found, an error is returned.
+//
+// Parameters:
+//   - devices: List of devices (uses first device's ModelName for chip identification)
 //
 // Returns:
-//   - Default MindIE Docker image URL from Harbor registry
-func (s *AscendSandbox) GetDefaultImage() string {
-	return "harbor.tsingmao.com/xuanwu/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts"
+//   - Docker image URL for MindIE on Ascend NPU
+//   - Error if image configuration is not found
+func (s *AscendSandbox) GetDefaultImage(devices []runtime.DeviceInfo) (string, error) {
+	// Load runtime images configuration
+	cfg := config.NewDefaultConfig()
+	if err := cfg.EnsureDirectories(); err != nil {
+		return "", fmt.Errorf("failed to ensure config directories: %w", err)
+	}
+	
+	runtimeImages, err := cfg.GetOrCreateRuntimeImagesConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to load runtime images config: %w", err)
+	}
+	
+	return runtime.GetImageForEngine(runtimeImages, devices, "mindie")
 }
 
 // GetDockerRuntime returns the Docker runtime to use for Ascend devices.

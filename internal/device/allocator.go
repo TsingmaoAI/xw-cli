@@ -17,11 +17,12 @@ import (
 // DeviceInfo represents information about a device for runtime use.
 // This is a simplified version focused on runtime needs.
 type DeviceInfo struct {
-	Type       string            `json:"type"`        // Device type (e.g., "ascend", "cuda")
-	Index      int               `json:"index"`       // Device index (0-based)
-	BusAddress string            `json:"bus_address"` // PCI bus address
-	ModelName  string            `json:"model_name"`  // Device model name
-	Properties map[string]string `json:"properties"`  // Additional properties
+	Type       string            `json:"type"`         // Device type (e.g., "ascend", "cuda")
+	Index      int               `json:"index"`        // Device index (0-based)
+	BusAddress string            `json:"bus_address"`  // PCI bus address
+	ModelName  string            `json:"model_name"`   // Device model name
+	ConfigKey  string            `json:"config_key"`   // Configuration key for runtime_images.yaml
+	Properties map[string]string `json:"properties"`   // Additional properties
 }
 
 // Allocator manages the allocation and release of physical devices.
@@ -57,6 +58,7 @@ func NewAllocator() (*Allocator, error) {
 				Index:      idx,
 				BusAddress: chip.BusAddress,
 				ModelName:  chip.ModelName,
+				ConfigKey:  chip.ConfigKey,
 				Properties: map[string]string{
 					"generation": chip.Generation,
 					"vendor_id":  chip.VendorID,
