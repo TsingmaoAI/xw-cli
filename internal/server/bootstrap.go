@@ -5,6 +5,7 @@ import (
 	
 	"github.com/tsingmao/xw/internal/logger"
 	"github.com/tsingmao/xw/internal/runtime"
+	mindiedocker "github.com/tsingmao/xw/internal/runtime/mindie-docker"
 	vllmdocker "github.com/tsingmao/xw/internal/runtime/vllm-docker"
 	
 	// Import model packages to trigger model registration via init()
@@ -47,16 +48,19 @@ func InitializeRuntimeManager() (*runtime.Manager, error) {
 		}
 	}
 	
-	// TODO: Register additional runtimes as implemented
-	// Example:
-	//
-	// if rt, err := mindiedocker.NewRuntime(); err != nil {
-	// 	logger.Warn("MindIE Docker runtime unavailable: %v", err)
-	// } else {
-	// 	mgr.RegisterRuntime(rt)
-	// 	registeredCount++
-	// 	logger.Info("Registered runtime: %s", rt.Name())
-	// }
+	// Register MindIE Docker runtime
+	if rt, err := mindiedocker.NewRuntime(); err != nil {
+		logger.Warn("MindIE Docker runtime unavailable: %v", err)
+	} else {
+		if err := mgr.RegisterRuntime(rt); err != nil {
+			logger.Warn("Failed to register MindIE Docker runtime: %v", err)
+		} else {
+			registeredCount++
+			logger.Info("Registered runtime: %s", rt.Name())
+		}
+	}
+	
+	// TODO: Register additional runtimes as implemented (e.g., native deployments)
 	
 	if registeredCount == 0 {
 		logger.Warn("No runtimes available - model execution will not be possible")
