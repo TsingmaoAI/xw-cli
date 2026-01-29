@@ -68,7 +68,7 @@ func GetDefaultRuntimeImagesConfig() RuntimeImagesConfig {
 		// Ascend 310P configuration
 		"ascend-310p": {
 			"vllm": {
-				"arm64": "quay.io/ascend/vllm-ascend:main-310p-openeuler",
+				"arm64": "quay.io/ascend/vllm-ascend:main-310p",
 				"amd64": "quay.io/ascend/vllm-ascend-310p:v0.11.0rc0-amd64",
 			},
 			"mindie": {
