@@ -28,6 +28,7 @@ type CreateParams struct {
 	ModelVersion   string
 	BackendType    string // Backend type (e.g., "vllm")
 	DeploymentMode string // Deployment mode (e.g., "docker")
+	ServerName     string // Server unique identifier (added as container name suffix)
 	Devices        []DeviceInfo
 	Port           int
 	Environment    map[string]string
@@ -67,13 +68,16 @@ type Instance struct {
 type InstanceState string
 
 const (
-	StateCreating InstanceState = "creating"
-	StateCreated  InstanceState = "created"
-	StateStarting InstanceState = "starting"
-	StateRunning  InstanceState = "running"
-	StateStopping InstanceState = "stopping"
-	StateStopped  InstanceState = "stopped"
-	StateError    InstanceState = "error"
+	StateCreating  InstanceState = "creating"
+	StateCreated   InstanceState = "created"
+	StateStarting  InstanceState = "starting"
+	StateRunning   InstanceState = "running"
+	StateReady     InstanceState = "ready"     // Running and endpoint is accessible
+	StateUnhealthy InstanceState = "unhealthy" // Running but endpoint is not accessible
+	StateStopping  InstanceState = "stopping"
+	StateStopped   InstanceState = "stopped"
+	StateError     InstanceState = "error"
+	StateUnknown   InstanceState = "unknown"   // Unable to determine real state
 )
 
 // LogStream provides access to instance logs.

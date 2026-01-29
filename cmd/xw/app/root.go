@@ -19,6 +19,12 @@ const (
 
 	// cliDescription is the short description shown in help text
 	cliDescription = "xw - AI inference on domestic chips"
+
+	// envServerURL is the environment variable name for server URL
+	envServerURL = "XW_SERVER"
+
+	// defaultServerURL is the default server address
+	defaultServerURL = "http://localhost:11581"
 )
 
 // GlobalOptions holds options that are common to all commands
@@ -63,7 +69,7 @@ xw server is running before executing commands.`,
 
 	// Add global flags
 	cmd.PersistentFlags().StringVar(&opts.ServerURL, "server", "",
-		"xw server address (default: http://localhost:11581)")
+		fmt.Sprintf("xw server address (env: %s, default: %s)", envServerURL, defaultServerURL))
 	cmd.PersistentFlags().BoolVarP(&opts.Verbose, "verbose", "v", false,
 		"verbose output")
 
@@ -91,7 +97,8 @@ xw server is running before executing commands.`,
 // This helper function initializes an HTTP client for communicating with
 // the xw server. It determines the server address using the following priority:
 //   1. --server flag (if specified)
-//   2. Default: http://localhost:11581
+//   2. XW_SERVER environment variable (if set)
+//   3. Default: http://localhost:11581
 //
 // Parameters:
 //   - opts: Global options containing server URL
@@ -101,9 +108,12 @@ xw server is running before executing commands.`,
 func getClient(opts *GlobalOptions) *client.Client {
 	serverURL := opts.ServerURL
 	
-	// Default to localhost if not specified
+	// Priority: flag > environment variable > default
 	if serverURL == "" {
-		serverURL = "http://localhost:11581"
+		serverURL = os.Getenv(envServerURL)
+	}
+	if serverURL == "" {
+		serverURL = defaultServerURL
 	}
 	
 	return client.NewClient(serverURL)

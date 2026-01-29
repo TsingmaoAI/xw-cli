@@ -27,7 +27,8 @@ import (
 //   - Error only if manager creation fails
 func InitializeRuntimeManager() (*runtime.Manager, error) {
 	// Create runtime manager
-	mgr, err := runtime.NewManager()
+	// Server name will be set later by the caller
+	mgr, err := runtime.NewManager("")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create runtime manager: %w", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 	
@@ -317,16 +318,44 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
 	
 	instances := h.runtimeManager.ListCompat()
 	
+	// Check real status for each instance and update state
+	for _, inst := range instances {
+		// Only check running instances
+		if inst.State == runtime.StateRunning {
+			if inst.Port == 0 {
+				// Running but no port assigned - unknown state
+				inst.State = runtime.StateUnknown
+			} else {
+				// Build endpoint from port
+				endpoint := fmt.Sprintf("http://localhost:%d", inst.Port)
+				
+				// Check if endpoint is actually accessible
+				if h.checkEndpointAccessible(endpoint) {
+					inst.State = runtime.StateReady
+				} else {
+					// Running but endpoint not accessible - unhealthy
+					inst.State = runtime.StateUnhealthy
+				}
+			}
+		}
+	}
+	
 	// Filter out stopped instances if not showing all
 	if !showAll {
 		filtered := make([]*runtime.RunInstance, 0)
 		for _, inst := range instances {
-			if inst.State == runtime.StateRunning {
+			// Show all non-stopped instances
+			if inst.State != runtime.StateStopped {
 				filtered = append(filtered, inst)
 			}
 		}
 		instances = filtered
 	}
+	
+	// Sort instances by created time (oldest first) for consistent order
+	sort.Slice(instances, func(i, j int) bool {
+		return instances[i].CreatedAt.Before(instances[j].CreatedAt)
+	})
 	
 	response := map[string]interface{}{
 		"instances": instances,
@@ -413,7 +442,7 @@ func (h *Handler) CheckInstanceReady(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) checkEndpointAccessible(endpoint string) bool {
 	// Check the health endpoint
 	client := &http.Client{
-		Timeout: 3 * time.Second,
+		Timeout: 1 * time.Second,
 	}
 
 	// Only check /health endpoint

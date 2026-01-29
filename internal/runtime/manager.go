@@ -26,16 +26,51 @@ type Manager struct {
 	deviceAllocator *device.Allocator // Lazy-initialized device allocator
 	stopCh          chan struct{}
 	wg              sync.WaitGroup
+	serverName      string // Server unique identifier for multi-server support
 }
 
-// NewManager creates a new runtime manager.
-func NewManager() (*Manager, error) {
+// NewManager creates a new runtime manager with the given server name.
+// The server name is used as a suffix for container names to support multiple xw servers.
+func NewManager(serverName string) (*Manager, error) {
 	return &Manager{
 		runtimes:        make(map[string]Runtime),
 		deviceAllocator: nil, // Lazy-initialized on first use
 		stopCh:          make(chan struct{}),
+		serverName:      serverName,
 	}, nil
+}
+
+// GetServerName returns the server name
+func (m *Manager) GetServerName() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.serverName
+}
+
+// SetServerName sets the server name (used during initialization)
+func (m *Manager) SetServerName(name string) {
+	m.mu.Lock()
+	m.serverName = name
+	
+	// Update server name in all runtimes
+	for _, rt := range m.runtimes {
+		if vllmRT, ok := rt.(interface{ SetServerName(string) }); ok {
+			vllmRT.SetServerName(name)
+		}
 	}
+	m.mu.Unlock()
+	
+	// Reload containers from Docker after setting server name
+	for _, rt := range m.runtimes {
+		if reloadable, ok := rt.(interface{ ReloadContainers(context.Context) error }); ok {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if err := reloadable.ReloadContainers(ctx); err != nil {
+				logger.Warn("Failed to reload containers for runtime: %v", err)
+			}
+			cancel()
+		}
+	}
+}
 	
 // getOrCreateAllocator gets the device allocator, creating it if necessary.
 // This is called internally when devices need to be allocated.
@@ -446,6 +481,7 @@ func (m *Manager) Run(configDir string, opts *RunOptions) (*RunInstance, error) 
 		ModelVersion:   "latest",
 		BackendType:    opts.BackendType,    // Pass backend type
 		DeploymentMode: opts.DeploymentMode, // Pass deployment mode
+		ServerName:     m.serverName,        // Pass server name for container naming
 		Devices:        devices,
 		Port:           opts.Port,
 		Environment:    make(map[string]string),

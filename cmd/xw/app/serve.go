@@ -130,24 +130,22 @@ func runServe(opts *ServeOptions) error {
 		return fmt.Errorf("failed to create directories: %w", err)
 	}
 
-	// Write server config for client auto-discovery
-	if err := cfg.WriteServerConfig(); err != nil {
-		logger.Warn("Failed to write server config: %v", err)
+	// Get or create server identity
+	identity, err := cfg.GetOrCreateServerIdentity()
+	if err != nil {
+		return fmt.Errorf("failed to get server identity: %w", err)
 	}
+	logger.Info("Server identity: %s", identity.Name)
 	
-	// Clean up config file on exit
-	defer func() {
-		if err := cfg.RemoveServerConfig(); err != nil {
-			logger.Warn("Failed to remove server config: %v", err)
-		}
-	}()
-	
-	// Initialize runtime manager with available runtimes
+	// Initialize runtime manager with available runtimes and server identity
 	runtimeMgr, err := server.InitializeRuntimeManager()
 	if err != nil {
 		return fmt.Errorf("failed to initialize runtime manager: %w", err)
 	}
 	defer runtimeMgr.Close()
+	
+	// Set server name in runtime manager
+	runtimeMgr.SetServerName(identity.Name)
 	
 	// Create server with runtime manager
 	srv := server.NewServer(cfg, runtimeMgr)

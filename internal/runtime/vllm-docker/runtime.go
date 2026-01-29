@@ -36,9 +36,10 @@ import (
 //
 // Thread-safety: All public methods are thread-safe via mutex protection.
 type Runtime struct {
-	client    *client.Client                // Docker client for container operations
-	mu        sync.RWMutex                   // Protects instances map
-	instances map[string]*runtime.Instance   // Active instances indexed by ID
+	client     *client.Client                // Docker client for container operations
+	mu         sync.RWMutex                   // Protects instances map
+	instances  map[string]*runtime.Instance   // Active instances indexed by ID
+	serverName string                         // Server unique identifier for filtering
 }
 
 // NewRuntime creates a new vLLM Docker runtime instance.
@@ -90,6 +91,24 @@ func NewRuntime() (*Runtime, error) {
 // like "vllm-native" or "mindie-docker".
 func (r *Runtime) Name() string {
 	return "vllm-docker"
+}
+
+// SetServerName sets the server name for this runtime (for multi-server support)
+func (r *Runtime) SetServerName(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.serverName = name
+}
+
+// ReloadContainers reloads existing containers from Docker
+func (r *Runtime) ReloadContainers(ctx context.Context) error {
+	// Clear existing instances
+	r.mu.Lock()
+	r.instances = make(map[string]*runtime.Instance)
+	r.mu.Unlock()
+	
+	// Reload with current server name filter
+	return r.loadExistingContainers(ctx)
 }
 
 // Create creates a new model instance but does not start it.
@@ -229,6 +248,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		"xw.backend_type":    params.BackendType,    // Store backend type
 		"xw.deployment_mode": params.DeploymentMode, // Store deployment mode
 		"xw.device_indices":  deviceIndicesStr,      // Store allocated device indices
+		"xw.server_name":     params.ServerName,     // Store server name for multi-server support
 	}
 	
 	// Build container configuration
@@ -301,6 +321,12 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		},
 	}
 	
+	// Build container name with server suffix for multi-server support
+	containerName := params.InstanceID
+	if params.ServerName != "" {
+		containerName = fmt.Sprintf("%s-%s", params.InstanceID, params.ServerName)
+	}
+	
 	// Create the container
 	resp, err := r.client.ContainerCreate(
 		ctx,
@@ -308,7 +334,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		hostConfig,
 		nil, // Network config
 		nil, // Platform config
-		params.InstanceID,
+		containerName,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker container: %w", err)
@@ -591,6 +617,14 @@ func (r *Runtime) loadExistingContainers(ctx context.Context) error {
 		instanceID := c.Labels["xw.instance_id"]
 		if instanceID == "" {
 			continue
+		}
+		
+		// Filter by server name if set (for multi-server support)
+		if r.serverName != "" {
+			containerServerName := c.Labels["xw.server_name"]
+			if containerServerName != r.serverName {
+				continue // Skip containers from other servers
+			}
 		}
 		
 		// Determine instance state from container state

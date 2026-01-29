@@ -10,11 +10,9 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const (
@@ -33,29 +31,7 @@ const (
 	// DefaultModelsDir is the default models directory name.
 	// Model files are stored in this subdirectory within the config directory.
 	DefaultModelsDir = "models"
-	
-	// ServerConfigFile is the server configuration file name.
-	// This file stores the current server address for client auto-discovery.
-	ServerConfigFile = "server.json"
 )
-
-// ServerInfo represents the server runtime information written to server.json
-//
-// This file is automatically created when the server starts and removed when
-// it stops. Clients read this file to auto-discover the server address.
-type ServerInfo struct {
-	// Address is the server URL (e.g., "http://localhost:11581")
-	Address string `json:"address"`
-	
-	// PID is the server process ID
-	PID int `json:"pid"`
-	
-	// StartTime is when the server was started (RFC3339 format)
-	StartTime string `json:"start_time"`
-	
-	// Version is the server version
-	Version string `json:"version,omitempty"`
-}
 
 // Config represents the complete application configuration.
 //
@@ -225,125 +201,6 @@ func (c *Config) EnsureDirectories() error {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
-	}
-
-	return nil
-}
-
-// WriteServerConfig writes the server configuration to a file.
-//
-// This method saves the current server information to a JSON configuration file
-// that can be automatically discovered by clients. This eliminates the
-// need for clients to specify --server for local connections.
-//
-// The configuration is written to ~/.xw/server.json and contains the
-// server's HTTP address, PID, start time, and version.
-//
-// Returns:
-//   - nil if the configuration is written successfully
-//   - error if the write operation fails
-//
-// Example:
-//
-//	if err := cfg.WriteServerConfig(); err != nil {
-//	    logger.Warn("Failed to write server config: %v", err)
-//	}
-func (c *Config) WriteServerConfig() error {
-	configFile := filepath.Join(c.Storage.ConfigDir, ServerConfigFile)
-	
-	// Ensure directory exists
-	if err := os.MkdirAll(c.Storage.ConfigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-	
-	// Create server info
-	info := ServerInfo{
-		Address:   c.GetServerAddress(),
-		PID:       os.Getpid(),
-		StartTime: time.Now().Format(time.RFC3339),
-		Version:   "1.0.0", // TODO: Get from build-time variable
-	}
-	
-	// Marshal to JSON with indentation for readability
-	data, err := json.MarshalIndent(info, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal server config: %w", err)
-	}
-	
-	// Write to file
-	if err := os.WriteFile(configFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write server config: %w", err)
-	}
-	
-	return nil
-}
-
-// ReadServerConfig reads the server configuration from a file.
-//
-// This method attempts to read the server information from the JSON configuration
-// file created by a running server. If the file doesn't exist or is
-// unreadable, it returns an empty string and no error.
-//
-// Clients should use this method to auto-discover the server address
-// before falling back to defaults or command-line arguments.
-//
-// Returns:
-//   - The server address if found, empty string otherwise
-//   - error only if there's a read error (not if file doesn't exist)
-//
-// Example:
-//
-//	cfg := config.NewDefaultConfig()
-//	if addr, _ := cfg.ReadServerConfig(); addr != "" {
-//	    // Use discovered address
-//	    client := client.NewClient(addr)
-//	}
-func (c *Config) ReadServerConfig() (string, error) {
-	configFile := filepath.Join(c.Storage.ConfigDir, ServerConfigFile)
-	
-	// Check if file exists
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		return "", nil // Not an error, just not found
-	}
-	
-	// Read server config file
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read server config: %w", err)
-	}
-	
-	// Parse JSON
-	var info ServerInfo
-	if err := json.Unmarshal(data, &info); err != nil {
-		return "", fmt.Errorf("failed to parse server config: %w", err)
-	}
-	
-	return info.Address, nil
-}
-
-// RemoveServerConfig removes the server configuration file.
-//
-// This method should be called when the server is shutting down to
-// clean up the configuration file and prevent clients from attempting
-// to connect to a non-existent server.
-//
-// Returns:
-//   - nil if the file is removed successfully or doesn't exist
-//   - error if the removal fails
-//
-// Example:
-//
-//	defer func() {
-//	    if err := cfg.RemoveServerConfig(); err != nil {
-//	        logger.Warn("Failed to remove server config: %v", err)
-//	    }
-//	}()
-func (c *Config) RemoveServerConfig() error {
-	configFile := filepath.Join(c.Storage.ConfigDir, ServerConfigFile)
-	
-	// Remove file, ignore if it doesn't exist
-	if err := os.Remove(configFile); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove server config: %w", err)
 	}
 
 	return nil
