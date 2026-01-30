@@ -497,7 +497,7 @@ func (m *Manager) Run(configDir string, opts *RunOptions) (*RunInstance, error) 
 	// Create the instance
 	instance, err := rt.Create(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create instance: %w", err)
+		return nil, err
 	}
 	
 	// Start the instance

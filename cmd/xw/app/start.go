@@ -145,19 +145,6 @@ func runStart(opts *StartOptions) error {
 		}
 		backendType = models.BackendType(parts[0])
 		deploymentMode = models.DeploymentMode(parts[1])
-		
-		// Validate backend and mode
-		validBackends := map[string]bool{"vllm": true, "mindie": true}
-		validModes := map[string]bool{"docker": true, "native": true}
-		
-		if !validBackends[parts[0]] {
-			fmt.Fprintf(os.Stderr, "invalid backend: %s (valid: vllm, mindie)\n", parts[0])
-			os.Exit(1)
-		}
-		if !validModes[parts[1]] {
-			fmt.Fprintf(os.Stderr, "invalid mode: %s (valid: docker, native)\n", parts[1])
-			os.Exit(1)
-		}
 	}
 
 	// Prepare additional config for device and concurrency

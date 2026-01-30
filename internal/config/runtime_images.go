@@ -63,6 +63,10 @@ func GetDefaultRuntimeImagesConfig() RuntimeImagesConfig {
 				"arm64": "harbor.tsingmao.com/xuanwu/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64",
 				"amd64": "NONE",
 			},
+			"mlguider": {
+				"arm64": "harbor.tsingmao.com/mlguider/release:0123-xw-arm64",
+				"amd64": "NONE",
+			},
 		},
 		
 		// Ascend 310P configuration
@@ -73,6 +77,10 @@ func GetDefaultRuntimeImagesConfig() RuntimeImagesConfig {
 			},
 			"mindie": {
 				"arm64": "harbor.tsingmao.com/xuanwu/mindie:2.3.0-300I-Duo-py311-openeuler24.03-lts",
+				"amd64": "NONE",
+			},
+			"mlguider": {
+				"arm64": "harbor.tsingmao.com/mlguider/release:0123-xw-arm64",
 				"amd64": "NONE",
 			},
 		},

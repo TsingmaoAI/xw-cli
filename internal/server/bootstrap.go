@@ -6,6 +6,7 @@ import (
 	"github.com/tsingmao/xw/internal/logger"
 	"github.com/tsingmao/xw/internal/runtime"
 	mindiedocker "github.com/tsingmao/xw/internal/runtime/mindie-docker"
+	mlguiderdocker "github.com/tsingmao/xw/internal/runtime/mlguider-docker"
 	vllmdocker "github.com/tsingmao/xw/internal/runtime/vllm-docker"
 	
 	// Import model packages to trigger model registration via init()
@@ -54,6 +55,18 @@ func InitializeRuntimeManager() (*runtime.Manager, error) {
 	} else {
 		if err := mgr.RegisterRuntime(rt); err != nil {
 			logger.Warn("Failed to register MindIE Docker runtime: %v", err)
+		} else {
+			registeredCount++
+			logger.Info("Registered runtime: %s", rt.Name())
+		}
+	}
+	
+	// Register MLGuider Docker runtime
+	if rt, err := mlguiderdocker.NewRuntime(); err != nil {
+		logger.Warn("MLGuider Docker runtime unavailable: %v", err)
+	} else {
+		if err := mgr.RegisterRuntime(rt); err != nil {
+			logger.Warn("Failed to register MLGuider Docker runtime: %v", err)
 		} else {
 			registeredCount++
 			logger.Info("Registered runtime: %s", rt.Name())

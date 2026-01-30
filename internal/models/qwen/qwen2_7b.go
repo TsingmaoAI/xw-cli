@@ -26,6 +26,7 @@ var Qwen2_7B = &models.ModelSpec{
 	Backends: []models.BackendOption{
 		{Type: models.BackendTypeVLLM, Mode: models.DeploymentModeDocker},
 		{Type: models.BackendTypeMindIE, Mode: models.DeploymentModeDocker},
+		{Type: models.BackendTypeMLGuider, Mode: models.DeploymentModeDocker},
 	},
 }
 

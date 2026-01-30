@@ -343,7 +343,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		containerName,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker container: %w", err)
+		return nil, err
 	}
 	
 	// Build instance metadata

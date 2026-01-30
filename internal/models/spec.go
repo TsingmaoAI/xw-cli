@@ -31,6 +31,9 @@ const (
 	
 	// BackendTypeVLLM is the vLLM high-throughput inference engine
 	BackendTypeVLLM BackendType = "vllm"
+	
+	// BackendTypeMLGuider is MLGuider high-performance inference engine for large language models
+	BackendTypeMLGuider BackendType = "mlguider"
 )
 
 // BackendOption specifies a backend choice with its deployment mode
