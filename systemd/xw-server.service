@@ -6,7 +6,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/xw serve --host 0.0.0.0
+ExecStart=/usr/local/bin/xw serve --host 127.0.0.1
 
 # Restart configuration
 Restart=on-failure
