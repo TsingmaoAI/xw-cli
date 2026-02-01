@@ -24,12 +24,16 @@ const (
 	// Port 11581 is used as it doesn't require root privileges.
 	DefaultServerPort = 11581
 
-	// DefaultConfigDir is the default configuration directory name.
+	// DefaultConfigDirName is the default configuration directory name.
 	// This directory is created in the user's home directory.
-	DefaultConfigDir = ".xw"
+	DefaultConfigDirName = ".xw"
+
+	// DefaultDataDirName is the default data directory name.
+	// This subdirectory under config dir contains all runtime data.
+	DefaultDataDirName = "data"
 
 	// DefaultModelsDir is the default models directory name.
-	// Model files are stored in this subdirectory within the config directory.
+	// Model files are stored in this subdirectory within the data directory.
 	DefaultModelsDir = "models"
 )
 
@@ -43,7 +47,7 @@ type Config struct {
 	Server ServerConfig `json:"server"`
 
 	// Storage holds the storage configuration including directories for
-	// configuration files and model files.
+	// data and configuration files.
 	Storage StorageConfig `json:"storage"`
 }
 
@@ -69,28 +73,34 @@ type ServerConfig struct {
 
 // StorageConfig represents the storage and persistence configuration.
 //
-// This configuration defines where the application stores its data,
-// including configuration files, model files, and other persistent state.
+// This configuration defines where the application stores its data
+// and configuration files.
 type StorageConfig struct {
-	// ConfigDir is the absolute path to the main configuration directory.
-	// This directory contains application settings and metadata.
+	// ConfigDir is the absolute path to the configuration files directory.
+	// Contains YAML configuration files like devices.yaml, models.yaml.
 	// Example: "/home/user/.xw"
 	ConfigDir string `json:"config_dir"`
 
-	// ModelsDir is the absolute path to the models storage directory.
-	// This directory contains downloaded AI model files.
-	// Example: "/home/user/.xw/models"
-	ModelsDir string `json:"models_dir"`
+	// DataDir is the absolute path to the main data directory.
+	// Contains all runtime data including models and server state.
+	// Example: "/home/user/.xw/data"
+	DataDir string `json:"data_dir"`
+}
+
+// GetModelsDir returns the models storage directory path.
+// Models are stored in a "models" subdirectory within the data directory.
+// Example: ~/.xw/data/models
+func (s *StorageConfig) GetModelsDir() string {
+	return filepath.Join(s.DataDir, DefaultModelsDir)
 }
 
 // NewDefaultConfig creates a new configuration instance with default values.
 //
 // This function initializes a Config struct with sensible defaults suitable
-// for most deployment scenarios. The configuration uses:
+// for user-level deployment. The configuration uses:
 //   - Server: localhost:11581 for local-only access
-//   - Storage: ~/.xw for configuration and models
-//
-// If the user's home directory cannot be determined, /tmp is used as a fallback.
+//   - ConfigDir: ~/.xw for configuration files (devices.yaml, models.yaml)
+//   - DataDir: ~/.xw/data for runtime data and models
 //
 // Returns:
 //   - A pointer to a newly created Config with default values.
@@ -105,8 +115,8 @@ func NewDefaultConfig() *Config {
 		homeDir = "/tmp"
 	}
 
-	configDir := filepath.Join(homeDir, DefaultConfigDir)
-	modelsDir := filepath.Join(configDir, DefaultModelsDir)
+	configDir := filepath.Join(homeDir, DefaultConfigDirName)
+	dataDir := filepath.Join(configDir, DefaultDataDirName)
 
 	return &Config{
 		Server: ServerConfig{
@@ -116,31 +126,46 @@ func NewDefaultConfig() *Config {
 		},
 		Storage: StorageConfig{
 			ConfigDir: configDir,
-			ModelsDir: modelsDir,
+			DataDir:   dataDir,
 		},
 	}
 }
 
-// NewConfigWithHome creates a new configuration with a custom home directory.
+// NewConfigWithCustomDirs creates a new configuration with custom directories.
 //
-// This function allows specifying a custom data directory instead of using
-// the default ~/.xw location. Useful for:
+// This function allows specifying custom configuration and data directories
+// instead of using the defaults. Useful for:
 //   - Testing with isolated environments
 //   - Running multiple instances
 //   - Custom deployment scenarios
 //
 // Parameters:
-//   - home: Custom home directory path
+//   - configDir: Custom configuration files directory path (empty string uses default ~/.xw)
+//   - dataDir: Custom data directory path (empty string uses configDir/data)
 //
 // Returns:
-//   - A pointer to a newly created Config with the specified home directory
+//   - A pointer to a newly created Config with the specified directories
 //
 // Example:
 //
-//	cfg := config.NewConfigWithHome("/data/xw")
-//	// Models will be stored in /data/xw/models/
-func NewConfigWithHome(home string) *Config {
-	modelsDir := filepath.Join(home, DefaultModelsDir)
+//	cfg := config.NewConfigWithCustomDirs("/opt/xw", "")
+//	// Config files: /opt/xw/*.yaml
+//	// Data directory: /opt/xw/data
+//	// Models will be stored in /opt/xw/data/models/
+func NewConfigWithCustomDirs(configDir, dataDir string) *Config {
+	// If no configDir specified, use default
+	if configDir == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			homeDir = "/tmp"
+		}
+		configDir = filepath.Join(homeDir, DefaultConfigDirName)
+	}
+	
+	// If no dataDir specified, use configDir/data
+	if dataDir == "" {
+		dataDir = filepath.Join(configDir, DefaultDataDirName)
+	}
 
 	return &Config{
 		Server: ServerConfig{
@@ -149,8 +174,8 @@ func NewConfigWithHome(home string) *Config {
 			Address: fmt.Sprintf("http://%s:%d", DefaultServerHost, DefaultServerPort),
 		},
 		Storage: StorageConfig{
-			ConfigDir: home,
-			ModelsDir: modelsDir,
+			ConfigDir: configDir,
+			DataDir:   dataDir,
 		},
 	}
 }
@@ -193,8 +218,8 @@ func (c *Config) GetServerAddress() string {
 //	}
 func (c *Config) EnsureDirectories() error {
 	dirs := []string{
-		c.Storage.ConfigDir,
-		c.Storage.ModelsDir,
+		c.Storage.DataDir,
+		c.Storage.GetModelsDir(),
 	}
 
 	for _, dir := range dirs {

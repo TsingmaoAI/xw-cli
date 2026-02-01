@@ -24,10 +24,10 @@ type ServeOptions struct {
 	// Port is the server port
 	Port int
 	
-	// Home is the data directory for storing models and configurations
-	Home string
+	// DataDir is the data directory for storing models and runtime data
+	DataDir string
 	
-	// ConfigDir is the directory containing configuration files
+	// ConfigDir is the directory containing configuration files (YAML files)
 	ConfigDir string
 }
 
@@ -93,10 +93,10 @@ chip devices. Press Ctrl+C to gracefully shut down the server.`,
 		"server host address")
 	cmd.Flags().IntVar(&opts.Port, "port", 11581,
 		"server port")
-	cmd.Flags().StringVar(&opts.Home, "home", "",
-		"data directory for models and configurations (default: ~/.xw)")
+	cmd.Flags().StringVar(&opts.DataDir, "data", "",
+		"data directory for models and runtime data (default: ~/.xw/data)")
 	cmd.Flags().StringVar(&opts.ConfigDir, "config", "",
-		"directory containing configuration files (default: /etc/xw/)")
+		"directory containing configuration files (default: ~/.xw)")
 	
 	// Mark unknown flags as errors
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
@@ -121,13 +121,8 @@ chip devices. Press Ctrl+C to gracefully shut down the server.`,
 //   - nil on successful shutdown
 //   - error if server startup or shutdown fails
 func runServe(opts *ServeOptions) error {
-	// Create configuration with custom home directory if specified
-	var cfg *config.Config
-	if opts.Home != "" {
-		cfg = config.NewConfigWithHome(opts.Home)
-	} else {
-		cfg = config.NewDefaultConfig()
-	}
+	// Create configuration with custom directories if specified
+	cfg := config.NewConfigWithCustomDirs(opts.ConfigDir, opts.DataDir)
 	cfg.Server.Host = opts.Host
 	cfg.Server.Port = opts.Port
 
@@ -143,21 +138,14 @@ func runServe(opts *ServeOptions) error {
 	}
 	logger.Info("Server identity: %s", identity.Name)
 	
-	// Load configurations from specified directory
-	var devicesConfigPath, modelsConfigPath string
-	if opts.ConfigDir != "" {
-		devicesConfigPath = filepath.Join(opts.ConfigDir, "devices.yaml")
-		modelsConfigPath = filepath.Join(opts.ConfigDir, "models.yaml")
-		logger.Info("Loading configurations from: %s", opts.ConfigDir)
-	}
+	// Load configurations from config directory
+	devicesConfigPath := filepath.Join(cfg.Storage.ConfigDir, "devices.yaml")
+	modelsConfigPath := filepath.Join(cfg.Storage.ConfigDir, "models.yaml")
+	logger.Info("Loading configurations from: %s", cfg.Storage.ConfigDir)
+	logger.Info("Data directory: %s", cfg.Storage.DataDir)
 	
 	// Load runtime images configuration (from devices.yaml)
-	var runtimeImagesErr error
-	if devicesConfigPath != "" {
-		_, runtimeImagesErr = config.LoadRuntimeImagesConfigFrom(devicesConfigPath)
-	} else {
-		_, runtimeImagesErr = config.LoadRuntimeImagesConfig()
-	}
+	_, runtimeImagesErr := config.LoadRuntimeImagesConfigFrom(devicesConfigPath)
 	if runtimeImagesErr != nil {
 		return fmt.Errorf("failed to load runtime images config: %w", runtimeImagesErr)
 	}

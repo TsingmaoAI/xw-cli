@@ -61,7 +61,7 @@ import (
 func (h *Handler) downloadModelStreaming(ctx context.Context, modelName, modelID, version string, w http.ResponseWriter, flusher http.Flusher) (string, error) {
 	// Ensure the models storage directory exists
 	// This directory is configured in the server config (typically ~/.xw/models/)
-	modelsDir := h.config.Storage.ModelsDir
+	modelsDir := h.config.Storage.GetModelsDir()
 	if err := os.MkdirAll(modelsDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create models directory: %w", err)
 	}

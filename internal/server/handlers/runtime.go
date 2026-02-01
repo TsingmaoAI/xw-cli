@@ -220,7 +220,7 @@ func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 	}
 	
 	// Get model path
-	modelPath := h.getModelPath(h.config.Storage.ModelsDir, reqBody.ModelID)
+	modelPath := h.getModelPath(h.config.Storage.GetModelsDir(), reqBody.ModelID)
 	
 	// Prepare additional config
 	additionalConfig := reqBody.Config

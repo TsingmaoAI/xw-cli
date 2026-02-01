@@ -157,7 +157,7 @@ func (h *Handler) ShowModel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Try to read Modelfile (user-editable, takes priority)
-	modelPath := h.getModelPath(h.config.Storage.ModelsDir, req.Model)
+	modelPath := h.getModelPath(h.config.Storage.GetModelsDir(), req.Model)
 	modelfileContent, hasModelfile := h.readModelfile(modelPath)
 
 	// Build response following Ollama format
@@ -520,7 +520,7 @@ func (h *Handler) readLicenseFile(modelPath string) string {
 // Parameters:
 //   - models: Pointer to slice of models to enrich with download status
 func (h *Handler) enrichModelsWithDownloadStatus(models *[]api.Model) {
-	modelsDir := h.config.Storage.ModelsDir
+	modelsDir := h.config.Storage.GetModelsDir()
 	
 	for i := range *models {
 		// Construct paths for model directory and lock file
@@ -692,10 +692,7 @@ func (h *Handler) ListDownloadedModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get models directory from config
-	modelsDir := h.config.Storage.ModelsDir
-	if modelsDir == "" {
-		modelsDir = filepath.Join(os.Getenv("HOME"), ".xw", "models")
-	}
+	modelsDir := h.config.Storage.GetModelsDir()
 
 	// Scan models directory
 	downloadedModels := []map[string]interface{}{}

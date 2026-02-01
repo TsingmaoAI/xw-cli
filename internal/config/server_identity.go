@@ -38,7 +38,7 @@ func GenerateServerName() string {
 // GetOrCreateServerIdentity gets the server identity from server.conf
 // or creates a new one if it doesn't exist
 func (c *Config) GetOrCreateServerIdentity() (*ServerIdentity, error) {
-	confPath := filepath.Join(c.Storage.ConfigDir, ServerConfFileName)
+	confPath := filepath.Join(c.Storage.DataDir, ServerConfFileName)
 	
 	// Check if server.conf exists
 	if _, err := os.Stat(confPath); err == nil {
