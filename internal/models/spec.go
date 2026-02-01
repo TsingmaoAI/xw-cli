@@ -11,31 +11,6 @@ import (
 	"github.com/tsingmao/xw/internal/api"
 )
 
-// DeploymentMode represents how a backend can be deployed
-type DeploymentMode string
-
-const (
-	// DeploymentModeDocker indicates containerized deployment using Docker
-	DeploymentModeDocker DeploymentMode = "docker"
-	
-	// DeploymentModeNative indicates direct installation on host system
-	DeploymentModeNative DeploymentMode = "native"
-)
-
-// BackendType represents the inference engine type
-type BackendType string
-
-const (
-	// BackendTypeMindIE is Huawei's MindIE inference engine for Ascend chips
-	BackendTypeMindIE BackendType = "mindie"
-	
-	// BackendTypeVLLM is the vLLM high-throughput inference engine
-	BackendTypeVLLM BackendType = "vllm"
-	
-	// BackendTypeMLGuider is MLGuider high-performance inference engine for large language models
-	BackendTypeMLGuider BackendType = "mlguider"
-)
-
 // BackendOption specifies a backend choice with its deployment mode
 //
 // Each model maintains an ordered list of BackendOptions, tried sequentially
@@ -46,10 +21,10 @@ const (
 // Each runtime (e.g., vllm-docker, mindie-docker) defines its own default image.
 type BackendOption struct {
 	// Type is the backend engine type (e.g., "mindie", "vllm")
-	Type BackendType
+	Type api.BackendType
 	
 	// Mode is the deployment mode (docker or native)
-	Mode DeploymentMode
+	Mode api.DeploymentMode
 	
 	// Command is the container command to run (optional)
 	// If empty, uses image default CMD/ENTRYPOINT
@@ -69,9 +44,11 @@ func (b BackendOption) String() string {
 // ModelSpec defines the complete specification for an AI model
 //
 // Each model file should create a ModelSpec instance with all necessary
-// configuration. The spec includes metadata, hardware requirements, and
-// an ordered list of backend options.
+// configuration. The spec includes model identification, specifications,
+// and deployment configuration.
 type ModelSpec struct {
+	// Model identification
+	
 	// ID is the unique model identifier (e.g., "qwen2-7b")
 	ID string
 	
@@ -79,28 +56,7 @@ type ModelSpec struct {
 	// This is used when downloading models from external repositories
 	SourceID string
 	
-	// DisplayName is the human-readable model name
-	DisplayName string
-	
-	// Family groups related models (e.g., "qwen", "llama")
-	Family string
-	
-	// Version is the model version string
-	Version string
-	
-	// Description provides detailed information about the model
-	Description string
-	
-	// Backends lists available backend options in priority order
-	// The first available backend will be used by default
-	// Docker modes should typically be listed before native modes
-	Backends []BackendOption
-	
-	// SupportedDevices lists compatible AI chip types
-	SupportedDevices []api.DeviceType
-	
-	// RequiredVRAM is the minimum VRAM in GB needed to run this model
-	RequiredVRAM int
+	// Model specifications
 	
 	// Parameters is the model size in billions of parameters
 	Parameters float64
@@ -112,20 +68,22 @@ type ModelSpec struct {
 	// For example: Qwen2-7B = 3584, Llama3-8B = 4096
 	EmbeddingLength int
 	
-	// Capabilities lists the model's supported features
-	// Common values: "completion", "vision", "tool_use", "function_calling"
-	Capabilities []string
+	// Deployment configuration
 	
-	// License specifies the model's license (e.g., "Apache-2.0", "MIT")
-	License string
-	
-	// Homepage is the URL to the model's official page or repository
-	Homepage string
+	// SupportedDevices maps device types to their supported engines
+	// This allows different devices to have different engine options
+	// Example: map["ascend-910b"] = [vllm:docker, mindie:docker, mlguider:docker]
+	//          map["ascend-310p"] = [vllm:docker, mindie:docker]
+	SupportedDevices map[api.DeviceType][]BackendOption
 	
 	// Tag specifies the model variant, typically quantization level (e.g., "int8", "fp16", "int4")
 	// Similar to Docker image tags, used as: model:tag
 	// Empty string means default/full precision variant
 	Tag string
+	
+	// Capabilities lists the model's supported features
+	// Common values: "completion", "vision", "tool_use", "function_calling"
+	Capabilities []string
 }
 
 // SupportsDevice checks if the model supports a specific device type
@@ -141,58 +99,36 @@ func (m *ModelSpec) SupportsDevice(deviceType api.DeviceType) bool {
 		return true
 	}
 	
-	for _, d := range m.SupportedDevices {
-		if d == deviceType {
-			return true
-		}
-	}
-	return false
+	_, exists := m.SupportedDevices[deviceType]
+	return exists
 }
 
-// GetBackendsByType filters backend options by backend type
+// GetEnginesForDevice returns the list of supported engines for a specific device
 //
 // Parameters:
-//   - backendType: The backend type to filter for
+//   - deviceType: The device type to get engines for
 //
 // Returns:
-//   - Slice of BackendOptions matching the type
-func (m *ModelSpec) GetBackendsByType(backendType BackendType) []BackendOption {
-	var filtered []BackendOption
-	for _, b := range m.Backends {
-		if b.Type == backendType {
-			filtered = append(filtered, b)
-		}
+//   - Slice of BackendOptions for the device (in priority order)
+//   - Empty slice if device is not supported
+func (m *ModelSpec) GetEnginesForDevice(deviceType api.DeviceType) []BackendOption {
+	engines, exists := m.SupportedDevices[deviceType]
+	if !exists {
+		return []BackendOption{}
 	}
-	return filtered
+	return engines
 }
 
-// GetBackendsByMode filters backend options by deployment mode
-//
-// Parameters:
-//   - mode: The deployment mode to filter for
+// GetAllSupportedDevices returns all device types that this model supports
 //
 // Returns:
-//   - Slice of BackendOptions matching the mode
-func (m *ModelSpec) GetBackendsByMode(mode DeploymentMode) []BackendOption {
-	var filtered []BackendOption
-	for _, b := range m.Backends {
-		if b.Mode == mode {
-			filtered = append(filtered, b)
-		}
+//   - Slice of DeviceType values
+func (m *ModelSpec) GetAllSupportedDevices() []api.DeviceType {
+	devices := make([]api.DeviceType, 0, len(m.SupportedDevices))
+	for device := range m.SupportedDevices {
+		devices = append(devices, device)
 	}
-	return filtered
-}
-
-// GetDefaultBackend returns the first backend option (highest priority)
-//
-// Returns:
-//   - Pointer to the default BackendOption
-//   - Error if no backends are configured
-func (m *ModelSpec) GetDefaultBackend() (*BackendOption, error) {
-	if len(m.Backends) == 0 {
-		return nil, fmt.Errorf("model %s has no backends configured", m.ID)
-	}
-	return &m.Backends[0], nil
+	return devices
 }
 
 // Validate checks if the model specification is valid
@@ -206,11 +142,14 @@ func (m *ModelSpec) Validate() error {
 	if m.ID == "" {
 		return fmt.Errorf("model ID cannot be empty")
 	}
-	if len(m.Backends) == 0 {
-		return fmt.Errorf("model %s must have at least one backend", m.ID)
-	}
 	if len(m.SupportedDevices) == 0 {
 		return fmt.Errorf("model %s must specify at least one supported device", m.ID)
+	}
+	// Verify each device has at least one engine
+	for device, engines := range m.SupportedDevices {
+		if len(engines) == 0 {
+			return fmt.Errorf("model %s: device %s must have at least one engine", m.ID, device)
+		}
 	}
 	return nil
 }

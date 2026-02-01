@@ -6,6 +6,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	
 	"github.com/tsingmao/xw/internal/api"
 	"github.com/tsingmao/xw/internal/config"
@@ -47,29 +48,36 @@ func LoadModelsFromConfig(configPath string) ([]ModelSpec, error) {
 	
 	for _, model := range modConfig.Models {
 		spec := ModelSpec{
-			ID:              model.ModelID,
-			SourceID:        model.Source.SourceID,
-			DisplayName:     model.ModelName,
-			Family:          model.Family,
-			Version:         model.Version,
-			Parameters:      model.Parameters,
-			ContextLength:   model.ContextLength,
-			RequiredVRAM:    model.RequiredVRAMGB,
-			Tag:             model.Source.Tag,
+			ID:               model.ModelID,
+			SourceID:         model.SourceID,
+			Parameters:       model.Parameters,
+			ContextLength:    model.ContextLength,
+			Tag:              model.Tag,
+			Capabilities:     model.Capabilities,
+			SupportedDevices: make(map[api.DeviceType][]BackendOption),
 		}
 		
-		// Convert supported devices
-		for _, device := range model.SupportedDevices {
-			spec.SupportedDevices = append(spec.SupportedDevices, api.DeviceType(device))
-		}
-		
-		// Convert backends
-		for _, backend := range model.Backends {
-			backendOpt := BackendOption{
-				Type: convertBackendType(backend.Type),
-				Mode: convertDeploymentMode(backend.Mode),
+		// Convert supported devices and their engines
+		// Format: map[device_type][]engine_strings
+		for deviceStr, engines := range model.SupportedDevices {
+			deviceType := api.DeviceType(deviceStr)
+			var backendOptions []BackendOption
+			
+			// Parse each engine string for this device
+			for _, engine := range engines {
+				backendOpt, err := parseEngine(engine)
+				if err != nil {
+					logger.Warn("Invalid engine format '%s' for model %s device %s: %v, skipping", 
+						engine, model.ModelID, deviceStr, err)
+					continue
+				}
+				backendOptions = append(backendOptions, backendOpt)
 			}
-			spec.Backends = append(spec.Backends, backendOpt)
+			
+			// Store device's engines in the map
+			if len(backendOptions) > 0 {
+				spec.SupportedDevices[deviceType] = backendOptions
+			}
 		}
 		
 		specs = append(specs, spec)
@@ -79,32 +87,36 @@ func LoadModelsFromConfig(configPath string) ([]ModelSpec, error) {
 	return specs, nil
 }
 
-// convertBackendType converts config.BackendType to models.BackendType.
-func convertBackendType(configBackend config.BackendType) BackendType {
-	switch configBackend {
-	case config.BackendVLLM:
-		return BackendTypeVLLM
-	case config.BackendMindIE:
-		return BackendTypeMindIE
-	case config.BackendMLGuider:
-		return BackendTypeMLGuider
-	default:
-		logger.Warn("Unknown backend type: %s, defaulting to vllm", configBackend)
-		return BackendTypeVLLM
+// parseEngine parses engine string in format "backend:mode" (e.g., "vllm:docker")
+func parseEngine(engine string) (BackendOption, error) {
+	parts := strings.SplitN(engine, ":", 2)
+	if len(parts) != 2 {
+		return BackendOption{}, fmt.Errorf("invalid engine format, expected 'backend:mode' (e.g., 'vllm:docker')")
 	}
-}
-
-// convertDeploymentMode converts config.DeploymentMode to models.DeploymentMode.
-func convertDeploymentMode(configMode config.DeploymentMode) DeploymentMode {
-	switch configMode {
-	case config.DeploymentModeDocker:
-		return DeploymentModeDocker
-	case config.DeploymentModeNative:
-		return DeploymentModeNative
+	
+	backendType := api.BackendType(parts[0])
+	deploymentMode := api.DeploymentMode(parts[1])
+	
+	// Validate backend type
+	switch backendType {
+	case api.BackendTypeVLLM, api.BackendTypeMindIE, api.BackendTypeMLGuider:
+		// Valid backend
 	default:
-		logger.Warn("Unknown deployment mode: %s, defaulting to docker", configMode)
-		return DeploymentModeDocker
+		return BackendOption{}, fmt.Errorf("unknown backend type: %s", backendType)
 	}
+	
+	// Validate deployment mode
+	switch deploymentMode {
+	case api.DeploymentModeDocker, api.DeploymentModeNative:
+		// Valid mode
+	default:
+		return BackendOption{}, fmt.Errorf("unknown deployment mode: %s", deploymentMode)
+	}
+	
+	return BackendOption{
+		Type: backendType,
+		Mode: deploymentMode,
+	}, nil
 }
 
 // LoadAndRegisterModelsFromConfig loads models from configuration and registers them.

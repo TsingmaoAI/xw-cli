@@ -540,20 +540,24 @@ func (h *Handler) enrichModelsWithDownloadStatus(models *[]api.Model) {
 			if h.hasModelFiles(modelPath) {
 				(*models)[i].Status = "downloaded"
 				// For downloaded models, populate metadata and modification time
-				if spec := h.modelRegistry.GetSpec((*models)[i].Name); spec != nil {
-					(*models)[i].Source = spec.SourceID
-					
-					if spec.Tag != "" {
-						(*models)[i].Tag = spec.Tag
-					} else {
-						(*models)[i].Tag = "latest"
-					}
-					
-					if len(spec.Backends) > 0 {
-						backend := spec.Backends[0]
+			if spec := h.modelRegistry.GetSpec((*models)[i].Name); spec != nil {
+				(*models)[i].Source = spec.SourceID
+				
+				if spec.Tag != "" {
+					(*models)[i].Tag = spec.Tag
+				} else {
+					(*models)[i].Tag = "latest"
+				}
+				
+				// Get first available engine from first supported device
+				for _, engines := range spec.SupportedDevices {
+					if len(engines) > 0 {
+						backend := engines[0]
 						(*models)[i].DefaultEngine = fmt.Sprintf("%s:%s", backend.Type, backend.Mode)
+						break
 					}
 				}
+			}
 				(*models)[i].ModifiedAt = info.ModTime().Format(time.RFC3339)
 			} else {
 				(*models)[i].Status = "not_downloaded"
@@ -573,9 +577,13 @@ func (h *Handler) enrichModelsWithDownloadStatus(models *[]api.Model) {
 					(*models)[i].Tag = "latest"
 				}
 				
-				if len(spec.Backends) > 0 {
-					backend := spec.Backends[0]
-					(*models)[i].DefaultEngine = fmt.Sprintf("%s:%s", backend.Type, backend.Mode)
+				// Get first available engine from first supported device
+				for _, engines := range spec.SupportedDevices {
+					if len(engines) > 0 {
+						backend := engines[0]
+						(*models)[i].DefaultEngine = fmt.Sprintf("%s:%s", backend.Type, backend.Mode)
+						break
+					}
 				}
 			}
 		}
@@ -772,12 +780,15 @@ func (h *Handler) ListDownloadedModels(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			// Get default engine from model spec
-			defaultEngine := "vllm:docker" // fallback
-			if len(spec.Backends) > 0 {
-				backend := spec.Backends[0]
+		// Get default engine from model spec (first engine of first device)
+		defaultEngine := "vllm:docker" // fallback
+		for _, engines := range spec.SupportedDevices {
+			if len(engines) > 0 {
+				backend := engines[0]
 				defaultEngine = string(backend.Type) + ":" + string(backend.Mode)
+				break
 			}
+		}
 
 			modelInfo := map[string]interface{}{
 				"id":             spec.ID,        // Model ID (e.g., "qwen2-0.5b")

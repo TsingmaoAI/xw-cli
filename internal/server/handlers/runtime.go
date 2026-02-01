@@ -11,6 +11,7 @@ import (
 	"time"
 	
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/tsingmao/xw/internal/api"
 	"github.com/tsingmao/xw/internal/hooks"
 	"github.com/tsingmao/xw/internal/logger"
 	"github.com/tsingmao/xw/internal/models"
@@ -30,8 +31,8 @@ func (h *Handler) StartModel(w http.ResponseWriter, r *http.Request) {
 	var reqBody struct {
 		ModelID        string                 `json:"model_id"`
 		Alias          string                 `json:"alias"`
-		BackendType    models.BackendType     `json:"backend_type"`
-		DeploymentMode models.DeploymentMode  `json:"deployment_mode"`
+		BackendType    api.BackendType        `json:"backend_type"`
+		DeploymentMode api.DeploymentMode     `json:"deployment_mode"`
 		Interactive    bool                   `json:"interactive"`
 		Config         map[string]interface{} `json:"additional_config"`
 	}
@@ -57,8 +58,8 @@ func (h *Handler) StartModel(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) runModelWithSSE(w http.ResponseWriter, r *http.Request, reqBody *struct {
 	ModelID        string                 `json:"model_id"`
 	Alias          string                 `json:"alias"`
-	BackendType    models.BackendType     `json:"backend_type"`
-	DeploymentMode models.DeploymentMode  `json:"deployment_mode"`
+	BackendType    api.BackendType        `json:"backend_type"`
+	DeploymentMode api.DeploymentMode     `json:"deployment_mode"`
 	Interactive    bool                   `json:"interactive"`
 	Config         map[string]interface{} `json:"additional_config"`
 }) {
@@ -130,8 +131,8 @@ func (h *Handler) runModelWithSSE(w http.ResponseWriter, r *http.Request, reqBod
 func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 	ModelID        string                 `json:"model_id"`
 	Alias          string                 `json:"alias"`
-	BackendType    models.BackendType     `json:"backend_type"`
-	DeploymentMode models.DeploymentMode  `json:"deployment_mode"`
+	BackendType    api.BackendType     `json:"backend_type"`
+	DeploymentMode api.DeploymentMode  `json:"deployment_mode"`
 	Interactive    bool                   `json:"interactive"`
 	Config         map[string]interface{} `json:"additional_config"`
 }, eventCh chan<- string, doneCh chan<- struct{}, errorCh chan<- error) {
@@ -154,21 +155,33 @@ func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 	// Find the matching backend option from model spec
 	var selectedBackend *models.BackendOption
 	if reqBody.BackendType == "" || reqBody.DeploymentMode == "" {
-		// Use first backend as default
-		if len(modelSpec.Backends) == 0 {
+		// Use first available engine from first supported device as default
+		found := false
+		for _, engines := range modelSpec.SupportedDevices {
+			if len(engines) > 0 {
+				selectedBackend = &engines[0]
+				reqBody.BackendType = selectedBackend.Type
+				reqBody.DeploymentMode = selectedBackend.Mode
+				eventCh <- fmt.Sprintf("Using default backend: %s (%s mode)", reqBody.BackendType, reqBody.DeploymentMode)
+				found = true
+				break
+			}
+		}
+		if !found {
 			errorCh <- fmt.Errorf("no backends available for model %s", reqBody.ModelID)
 			return
 		}
-		selectedBackend = &modelSpec.Backends[0]
-		reqBody.BackendType = selectedBackend.Type
-		reqBody.DeploymentMode = selectedBackend.Mode
-		eventCh <- fmt.Sprintf("Using default backend: %s (%s mode)", reqBody.BackendType, reqBody.DeploymentMode)
 	} else {
-		// Find matching backend from user's choice
-		for i := range modelSpec.Backends {
-			backend := &modelSpec.Backends[i]
-			if backend.Type == reqBody.BackendType && backend.Mode == reqBody.DeploymentMode {
-				selectedBackend = backend
+		// Find matching backend from user's choice across all devices
+		for _, engines := range modelSpec.SupportedDevices {
+			for i := range engines {
+				backend := &engines[i]
+				if backend.Type == reqBody.BackendType && backend.Mode == reqBody.DeploymentMode {
+					selectedBackend = backend
+					break
+				}
+			}
+			if selectedBackend != nil {
 				break
 			}
 		}
@@ -180,7 +193,7 @@ func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 	}
 	
 	// Only support Docker mode for now
-	if reqBody.DeploymentMode != models.DeploymentModeDocker {
+	if reqBody.DeploymentMode != api.DeploymentModeDocker {
 		errorCh <- fmt.Errorf("only Docker mode is currently supported")
 		return
 	}
@@ -268,8 +281,8 @@ func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 func (h *Handler) runModelJSON(w http.ResponseWriter, reqBody *struct {
 	ModelID        string                 `json:"model_id"`
 	Alias          string                 `json:"alias"`
-	BackendType    models.BackendType     `json:"backend_type"`
-	DeploymentMode models.DeploymentMode  `json:"deployment_mode"`
+	BackendType    api.BackendType     `json:"backend_type"`
+	DeploymentMode api.DeploymentMode  `json:"deployment_mode"`
 	Interactive    bool                   `json:"interactive"`
 	Config         map[string]interface{} `json:"additional_config"`
 }) {

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -19,78 +20,22 @@ import (
 	"github.com/tsingmao/xw/internal/logger"
 )
 
-// BackendType represents the inference engine type.
-type BackendType string
-
-const (
-	BackendVLLM     BackendType = "vllm"     // vLLM (fast LLM inference)
-	BackendMindIE   BackendType = "mindie"   // MindIE (Huawei Ascend)
-	BackendMLGuider BackendType = "mlguider" // MLGuider
-)
-
-// DeploymentMode represents how a backend can be deployed.
-type DeploymentMode string
-
-const (
-	DeploymentModeDocker DeploymentMode = "docker" // Docker container deployment
-	DeploymentModeNative DeploymentMode = "native" // Native installation
-)
-
-// ModelSourceType represents where the model comes from.
-type ModelSourceType string
-
-const (
-	SourceTypeHuggingFace ModelSourceType = "huggingface" // HuggingFace Hub
-	SourceTypeModelScope  ModelSourceType = "modelscope"  // ModelScope (阿里巴巴)
-	SourceTypeLocal       ModelSourceType = "local"       // Local filesystem
-	SourceTypeGit         ModelSourceType = "git"         // Git repository
-	SourceTypeHTTP        ModelSourceType = "http"        // HTTP/HTTPS URL
-)
-
-// ModelSource defines where and how to obtain a model.
-type ModelSource struct {
-	// SourceType specifies the source platform/method
-	SourceType ModelSourceType `yaml:"source_type"`
-	
-	// SourceID is the identifier within the source platform
-	// Examples: "Qwen/Qwen2-7B" (HuggingFace), "qwen/Qwen2-7B" (ModelScope)
-	SourceID string `yaml:"source_id"`
-	
-	// Tag specifies version/variant (optional)
-	// Examples: "main", "v1.0"
-	Tag string `yaml:"tag,omitempty"`
-}
-
-// BackendConfig defines a backend option for running a model.
-type BackendConfig struct {
-	// Type is the backend engine type (vllm, mindie, mlguider)
-	Type BackendType `yaml:"type"`
-	
-	// Mode is the deployment mode (docker or native)
-	Mode DeploymentMode `yaml:"mode"`
-}
 
 // ModelConfig defines configuration for an AI model.
 //
 // This structure represents a model that can be deployed and served by xw.
 type ModelConfig struct {
+	// Model identification
+	
 	// ModelID is the unique identifier for this model
 	// Convention: lowercase, hyphen-separated (e.g., "qwen2-7b")
 	ModelID string `yaml:"model_id"`
 	
-	// ModelName is the human-readable display name
-	// Example: "Qwen2 7B"
-	ModelName string `yaml:"model_name"`
+	// SourceID is the model ID on the source platform
+	// Examples: "qwen/Qwen2-7B" (ModelScope), "Qwen/Qwen2-7B" (HuggingFace)
+	SourceID string `yaml:"source_id"`
 	
-	// Family groups related models (e.g., "qwen", "llama")
-	Family string `yaml:"family,omitempty"`
-	
-	// Version is the model version string (optional)
-	// Example: "2.0", "2.5"
-	Version string `yaml:"version,omitempty"`
-	
-	// Source defines where to obtain the model
-	Source ModelSource `yaml:"source"`
+	// Model specifications
 	
 	// Parameters is the model size in billions of parameters
 	// Example: 7.0 for 7B model
@@ -99,17 +44,23 @@ type ModelConfig struct {
 	// ContextLength is the maximum context window size in tokens
 	ContextLength int `yaml:"context_length,omitempty"`
 	
-	// RequiredVRAMGB is the minimum VRAM in GB needed to run this model
-	RequiredVRAMGB int `yaml:"required_vram_gb,omitempty"`
+	// Deployment configuration
 	
-	// SupportedDevices lists compatible device config keys
-	// Must match config_key from device configuration
-	// Example: ["ascend-910b", "ascend-310p"]
-	SupportedDevices []string `yaml:"supported_devices"`
+	// SupportedDevices maps device types to their supported engines
+	// Key: device config_key (e.g., "ascend-910b")
+	// Value: list of engines in priority order (e.g., ["vllm:docker", "mindie:docker"])
+	// Example:
+	//   ascend-910b:
+	//     - vllm:docker
+	//     - mindie:docker
+	SupportedDevices map[string][]string `yaml:"supported_devices"`
 	
-	// Backends lists available backend options in priority order
-	// The first available backend will be used by default
-	Backends []BackendConfig `yaml:"backends"`
+	// Tag specifies the model variant (e.g., "main", "int8", "fp16")
+	Tag string `yaml:"tag,omitempty"`
+	
+	// Capabilities lists the model's supported features
+	// Common values: "completion", "vision", "tool_use", "function_calling"
+	Capabilities []string `yaml:"capabilities,omitempty"`
 }
 
 // ModelsConfig is the root configuration structure for model definitions.
@@ -157,10 +108,8 @@ var (
 // The configuration is cached after first load. Subsequent calls return the
 // cached configuration without re-reading the file.
 //
-// Configuration File Location Priority:
-//   1. Provided configPath parameter
-//   2. XW_MODEL_CONFIG environment variable
-//   3. Default: /etc/xw/models.yaml
+// Configuration File Location:
+//   - Provided configPath parameter, or default: /etc/xw/models.yaml
 //
 // Parameters:
 //   - configPath: Optional path to configuration file (empty string for default)
@@ -191,14 +140,8 @@ func LoadModelsConfig(configPath string) (*ModelsConfig, error) {
 	// Determine config file path
 	path := configPath
 	if path == "" {
-		// Check environment variable
-		if envPath := os.Getenv("XW_MODEL_CONFIG"); envPath != "" {
-			path = envPath
-			logger.Debug("Using model config from XW_MODEL_CONFIG: %s", path)
-		} else {
-			path = defaultModelConfigPath
-			logger.Debug("Using default model config path: %s", path)
-		}
+		path = defaultModelConfigPath
+		logger.Debug("Using default model config path: %s", path)
 	}
 	
 	// Check if file exists
@@ -308,22 +251,15 @@ func validateModelsConfig(config *ModelsConfig) error {
 			return fmt.Errorf("model[%d]: model_id is required", i)
 		}
 		
-		if model.ModelName == "" {
-			return fmt.Errorf("model %s: model_name is required", model.ModelID)
-		}
-		
 		// Check for duplicate model IDs
 		if modelIDs[model.ModelID] {
 			return fmt.Errorf("duplicate model_id: %s", model.ModelID)
 		}
 		modelIDs[model.ModelID] = true
 		
-		// Validate source
-		if model.Source.SourceType == "" {
-			return fmt.Errorf("model %s: source.source_type is required", model.ModelID)
-		}
-		if model.Source.SourceID == "" {
-			return fmt.Errorf("model %s: source.source_id is required", model.ModelID)
+		// Validate source ID
+		if model.SourceID == "" {
+			return fmt.Errorf("model %s: source_id is required", model.ModelID)
 		}
 		
 		// Validate supported devices
@@ -331,17 +267,21 @@ func validateModelsConfig(config *ModelsConfig) error {
 			return fmt.Errorf("model %s: at least one supported device is required", model.ModelID)
 		}
 		
-		// Validate backends
-		if len(model.Backends) == 0 {
-			return fmt.Errorf("model %s: at least one backend is required", model.ModelID)
-		}
-		
-		for j, backend := range model.Backends {
-			if backend.Type == "" {
-				return fmt.Errorf("model %s, backend[%d]: type is required", model.ModelID, j)
+		// Validate each device's engines
+		for device, engines := range model.SupportedDevices {
+			if len(engines) == 0 {
+				return fmt.Errorf("model %s, device %s: at least one engine is required", model.ModelID, device)
 			}
-			if backend.Mode == "" {
-				return fmt.Errorf("model %s, backend[%d]: mode is required", model.ModelID, j)
+			
+			for j, engine := range engines {
+				if engine == "" {
+					return fmt.Errorf("model %s, device %s, engine[%d]: engine string is required", model.ModelID, device, j)
+				}
+				// Basic format validation (should be "backend:mode")
+				if !strings.Contains(engine, ":") {
+					return fmt.Errorf("model %s, device %s, engine[%d]: invalid format '%s', expected 'backend:mode' (e.g., 'vllm:docker')", 
+						model.ModelID, device, j, engine)
+				}
 			}
 		}
 	}
@@ -382,48 +322,14 @@ func FindModelByID(config *ModelsConfig, modelID string) *ModelConfig {
 func FindModelsByDeviceType(config *ModelsConfig, deviceConfigKey string) []*ModelConfig {
 	var models []*ModelConfig
 	for i := range config.Models {
-		for _, supportedDevice := range config.Models[i].SupportedDevices {
-			if supportedDevice == deviceConfigKey {
-				models = append(models, &config.Models[i])
-				break
-			}
+		// Check if device exists in the map
+		if _, exists := config.Models[i].SupportedDevices[deviceConfigKey]; exists {
+			models = append(models, &config.Models[i])
 		}
 	}
 	return models
 }
 
-// GetDefaultBackend returns the first (highest priority) backend for a model.
-//
-// Parameters:
-//   - model: ModelConfig to query
-//
-// Returns:
-//   - Pointer to default BackendConfig
-//   - nil if no backends are configured (should not happen after validation)
-func GetDefaultBackend(model *ModelConfig) *BackendConfig {
-	if len(model.Backends) == 0 {
-		return nil
-	}
-	return &model.Backends[0]
-}
-
-// FindBackendByType searches for a backend configuration by backend type.
-//
-// Parameters:
-//   - model: ModelConfig to search
-//   - backendType: BackendType to find
-//
-// Returns:
-//   - Pointer to BackendConfig if found
-//   - nil if not found
-func FindBackendByType(model *ModelConfig, backendType BackendType) *BackendConfig {
-	for i := range model.Backends {
-		if model.Backends[i].Type == backendType {
-			return &model.Backends[i]
-		}
-	}
-	return nil
-}
 
 // GetAllModelIDs returns a list of all model IDs defined in the configuration.
 //

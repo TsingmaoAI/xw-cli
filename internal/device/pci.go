@@ -136,7 +136,7 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 	
 	for _, device := range devices {
 		// Lookup chip from configuration
-		configChip, err := config.LookupChipModelByPCIID("", device.VendorID, device.DeviceID)
+		configChip, err := config.LookupChipModelByPCIID(device.VendorID, device.DeviceID)
 		if err != nil {
 			// Configuration loading error
 			continue

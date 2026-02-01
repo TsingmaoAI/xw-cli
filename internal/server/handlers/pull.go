@@ -128,7 +128,7 @@ func (h *Handler) PullModel(w http.ResponseWriter, r *http.Request) {
 	logger.Info("Pulling model: %s (source: %s)", req.Model, sourceID)
 
 	// Send initial status message to inform client download is starting
-	fmt.Fprintf(w, "data: {\"type\":\"status\",\"message\":\"Starting download of %s...\"}\n\n", modelSpec.DisplayName)
+	fmt.Fprintf(w, "data: {\"type\":\"status\",\"message\":\"Starting download of %s...\"}\n\n", modelSpec.ID)
 	flusher.Flush()
 
 	// Execute the actual download with streaming output

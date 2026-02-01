@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,9 @@ type ServeOptions struct {
 	
 	// Home is the data directory for storing models and configurations
 	Home string
+	
+	// ConfigDir is the directory containing configuration files
+	ConfigDir string
 }
 
 // NewServeCommand creates the serve command.
@@ -91,6 +95,8 @@ chip devices. Press Ctrl+C to gracefully shut down the server.`,
 		"server port")
 	cmd.Flags().StringVar(&opts.Home, "home", "",
 		"data directory for models and configurations (default: ~/.xw)")
+	cmd.Flags().StringVar(&opts.ConfigDir, "config", "",
+		"directory containing configuration files (default: /etc/xw/)")
 	
 	// Mark unknown flags as errors
 	cmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
@@ -137,17 +143,29 @@ func runServe(opts *ServeOptions) error {
 	}
 	logger.Info("Server identity: %s", identity.Name)
 	
-	// Load runtime images configuration
-	_, err = config.LoadRuntimeImagesConfig("")
-	if err != nil {
-		return fmt.Errorf("failed to load runtime images config: %w", err)
+	// Load configurations from specified directory
+	var devicesConfigPath, modelsConfigPath string
+	if opts.ConfigDir != "" {
+		devicesConfigPath = filepath.Join(opts.ConfigDir, "devices.yaml")
+		modelsConfigPath = filepath.Join(opts.ConfigDir, "models.yaml")
+		logger.Info("Loading configurations from: %s", opts.ConfigDir)
+	}
+	
+	// Load runtime images configuration (from devices.yaml)
+	var runtimeImagesErr error
+	if devicesConfigPath != "" {
+		_, runtimeImagesErr = config.LoadRuntimeImagesConfigFrom(devicesConfigPath)
+	} else {
+		_, runtimeImagesErr = config.LoadRuntimeImagesConfig()
+	}
+	if runtimeImagesErr != nil {
+		return fmt.Errorf("failed to load runtime images config: %w", runtimeImagesErr)
 	}
 	logger.Info("Runtime images configuration loaded")
 	
 	// Initialize models from configuration
-	if err := server.InitializeModels(); err != nil {
-		// Non-fatal error, server can continue without pre-configured models
-		logger.Warn("Model initialization incomplete, continuing...")
+	if err := server.InitializeModels(modelsConfigPath); err != nil {
+		return fmt.Errorf("failed to initialize models: %w", err)
 	}
 	
 	// Initialize runtime manager with available runtimes and server identity

@@ -7,6 +7,10 @@ import (
 	"github.com/tsingmao/xw/internal/api"
 )
 
+// Type aliases for convenience
+type BackendType = api.BackendType
+type DeploymentMode = api.DeploymentMode
+
 // Runtime defines the interface for model runtime backends.
 type Runtime interface {
 	Create(ctx context.Context, params *CreateParams) (*Instance, error)

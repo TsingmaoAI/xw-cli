@@ -30,25 +30,22 @@ type ChipModelInfo struct {
 // This function reads the device configuration and converts it into a simple
 // structure that can be easily consumed by the device detection code.
 //
-// Parameters:
-//   - configPath: Optional path to device configuration file (empty for default)
-//
 // Returns:
 //   - Slice of chip model information
 //   - Error if configuration cannot be loaded or is invalid
 //
 // Example:
 //
-//	models, err := LoadChipModels("")
+//	models, err := LoadChipModels()
 //	if err != nil {
 //	    log.Fatalf("Failed to load chip models: %v", err)
 //	}
 //	for _, model := range models {
 //	    fmt.Printf("Loaded: %s (%s)\n", model.ModelName, model.ConfigKey)
 //	}
-func LoadChipModels(configPath string) ([]ChipModelInfo, error) {
+func LoadChipModels() ([]ChipModelInfo, error) {
 	// Load device configuration
-	devConfig, err := LoadDevicesConfig(configPath)
+	devConfig, err := LoadDevicesConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load device configuration: %w", err)
 	}
@@ -80,23 +77,20 @@ func LoadChipModels(configPath string) ([]ChipModelInfo, error) {
 // This function reads the device configuration and extracts all config_key
 // values, which represent the supported device types.
 //
-// Parameters:
-//   - configPath: Optional path to device configuration file (empty for default)
-//
 // Returns:
 //   - Slice of DeviceType values from configuration
 //   - Error if configuration cannot be loaded
 //
 // Example:
 //
-//	types, err := GetSupportedDeviceTypes("")
+//	types, err := GetSupportedDeviceTypes()
 //	if err != nil {
 //	    log.Fatalf("Failed to get device types: %v", err)
 //	}
 //	fmt.Printf("Supported device types: %v\n", types)
-func GetSupportedDeviceTypes(configPath string) ([]api.DeviceType, error) {
+func GetSupportedDeviceTypes() ([]api.DeviceType, error) {
 	// Load device configuration
-	devConfig, err := LoadDevicesConfig(configPath)
+	devConfig, err := LoadDevicesConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load device configuration: %w", err)
 	}
@@ -119,7 +113,6 @@ func GetSupportedDeviceTypes(configPath string) ([]api.DeviceType, error) {
 // identify discovered devices.
 //
 // Parameters:
-//   - configPath: Optional path to device configuration file (empty for default)
 //   - vendorID: PCIe vendor ID (e.g., "0x19e5")
 //   - deviceID: PCIe device ID (e.g., "0xd802")
 //
@@ -130,16 +123,16 @@ func GetSupportedDeviceTypes(configPath string) ([]api.DeviceType, error) {
 //
 // Example:
 //
-//	model, err := LookupChipModelByPCIID("", "0x19e5", "0xd802")
+//	model, err := LookupChipModelByPCIID("0x19e5", "0xd802")
 //	if err != nil {
 //	    log.Fatalf("Lookup failed: %v", err)
 //	}
 //	if model != nil {
 //	    fmt.Printf("Found: %s\n", model.ModelName)
 //	}
-func LookupChipModelByPCIID(configPath, vendorID, deviceID string) (*ChipModelInfo, error) {
+func LookupChipModelByPCIID(vendorID, deviceID string) (*ChipModelInfo, error) {
 	// Load device configuration
-	devConfig, err := LoadDevicesConfig(configPath)
+	devConfig, err := LoadDevicesConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load device configuration: %w", err)
 	}
@@ -183,7 +176,7 @@ func LookupChipModelByPCIID(configPath, vendorID, deviceID string) (*ChipModelIn
 //	// Returns: "ascend-310p", nil
 func GetConfigKeyByModelName(modelName string) (string, error) {
 	// Load device configuration
-	devConfig, err := LoadDevicesConfig("")
+	devConfig, err := LoadDevicesConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to load device configuration: %w", err)
 	}

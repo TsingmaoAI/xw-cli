@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/tsingmao/xw/internal/models"
+	"github.com/tsingmao/xw/internal/api"
 )
 
 // StartOptions holds options for the start command
@@ -134,17 +134,19 @@ func runStart(opts *StartOptions) error {
 	client := getClient(opts.GlobalOptions)
 
 	// Parse engine string (format: "backend:mode")
-	var backendType models.BackendType
-	var deploymentMode models.DeploymentMode
+	// Only basic format check, real validation happens on server side
+	var backendType api.BackendType
+	var deploymentMode api.DeploymentMode
 	
 	if opts.Engine != "" {
 		parts := strings.Split(opts.Engine, ":")
 		if len(parts) != 2 {
-			fmt.Fprintf(os.Stderr, "invalid engine format: %s (expected format: backend:mode, e.g., vllm:docker)\n", opts.Engine)
+			fmt.Fprintf(os.Stderr, "Error: Invalid engine format: %s\n", opts.Engine)
+			fmt.Fprintf(os.Stderr, "Expected format: backend:mode (e.g., vllm:docker, mindie:native)\n")
 			os.Exit(1)
 		}
-		backendType = models.BackendType(parts[0])
-		deploymentMode = models.DeploymentMode(parts[1])
+		backendType = api.BackendType(parts[0])
+		deploymentMode = api.DeploymentMode(parts[1])
 	}
 
 	// Prepare additional config for device and concurrency

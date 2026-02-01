@@ -26,9 +26,8 @@ import (
 //	    fmt.Printf("Vendor: %s (%s)\n", vendor.VendorName, vendor.VendorID)
 //	}
 func LoadVendorsFromConfig() []ChipVendor {
-	devConfig, err := config.LoadDevicesConfig("")
+	devConfig, err := config.LoadDevicesConfig()
 	if err != nil {
-		logger.Warn("Failed to load device configuration: %v", err)
 		return []ChipVendor{}
 	}
 	
@@ -60,9 +59,8 @@ func LoadVendorsFromConfig() []ChipVendor {
 //	    fmt.Printf("Chip: %s (%s:%s)\n", chip.ModelName, chip.VendorID, chip.DeviceID)
 //	}
 func LoadChipsFromConfig() []ChipModel {
-	chipModels, err := config.LoadChipModels("")
+	chipModels, err := config.LoadChipModels()
 	if err != nil {
-		logger.Warn("Failed to load chip models from configuration: %v", err)
 		return []ChipModel{}
 	}
 	

@@ -441,16 +441,18 @@ func RegisterModelSpec(spec *ModelSpec) {
 	}
 	defaultRegistry.specs[spec.ID] = spec
 	
+	// Extract device types from the map for API model
+	devices := make([]api.DeviceType, 0, len(spec.SupportedDevices))
+	for device := range spec.SupportedDevices {
+		devices = append(devices, device)
+	}
+	
 	// Also create legacy API model for backwards compatibility with ls command
 	apiModel := &api.Model{
 		Name:             spec.ID,
-		Description:      spec.Description,
-		Version:          spec.Version,
+		Version:          spec.Tag, // Tag is the version/variant
 		Size:             int64(spec.Parameters * 2 * 1000000000), // Rough estimate: params * 2 bytes * 1B
-		SupportedDevices: spec.SupportedDevices,
-		Format:           "GGUF", // Default format
-		CreatedAt:        "2026-01-26T00:00:00Z",
-		UpdatedAt:        "2026-01-26T00:00:00Z",
+		SupportedDevices: devices,
 	}
 	defaultRegistry.models[spec.ID] = apiModel
 	

@@ -16,17 +16,19 @@ import (
 // This function should be called during server startup to populate the
 // model registry with models defined in the configuration file.
 //
+// Parameters:
+//   - configPath: Optional path to model configuration file (empty for default)
+//
 // Returns:
 //   - Error if model configuration loading fails (non-fatal, logs warning)
-func InitializeModels() error {
+func InitializeModels(configPath string) error {
 	logger.Info("Loading models from configuration...")
 	
-	if err := models.LoadAndRegisterModelsFromConfig(""); err != nil {
-		logger.Warn("Failed to load models from configuration: %v", err)
-		logger.Warn("Server will start without pre-configured models")
-		return err
+	if err := models.LoadAndRegisterModelsFromConfig(configPath); err != nil {
+		return fmt.Errorf("failed to load models from configuration: %w", err)
 	}
 	
+	logger.Info("Models configuration loaded successfully")
 	return nil
 }
 

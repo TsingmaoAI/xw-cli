@@ -10,6 +10,31 @@
 // HTTP transmission. The API follows RESTful principles where applicable.
 package api
 
+// BackendType represents the inference engine type
+type BackendType string
+
+const (
+	// BackendTypeMindIE is Huawei's MindIE inference engine for Ascend chips
+	BackendTypeMindIE BackendType = "mindie"
+	
+	// BackendTypeVLLM is the vLLM high-throughput inference engine
+	BackendTypeVLLM BackendType = "vllm"
+	
+	// BackendTypeMLGuider is MLGuider high-performance inference engine for large language models
+	BackendTypeMLGuider BackendType = "mlguider"
+)
+
+// DeploymentMode represents how a backend can be deployed
+type DeploymentMode string
+
+const (
+	// DeploymentModeDocker indicates containerized deployment using Docker
+	DeploymentModeDocker DeploymentMode = "docker"
+	
+	// DeploymentModeNative indicates direct installation on host system
+	DeploymentModeNative DeploymentMode = "native"
+)
+
 // DeviceType represents specific AI chip model identifiers.
 //
 // Device types use precise chip model identifiers (e.g., "ascend-910b", "ascend-310p")

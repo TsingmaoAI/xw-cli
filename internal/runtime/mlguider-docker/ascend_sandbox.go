@@ -259,7 +259,7 @@ func (s *AscendSandbox) GetAdditionalMounts() map[string]string {
 //   - Error if image configuration is not found
 func (s *AscendSandbox) GetDefaultImage(devices []runtime.DeviceInfo) (string, error) {
 	// Load runtime images configuration
-	runtimeImages, err := config.LoadRuntimeImagesConfig("")
+	runtimeImages, err := config.LoadRuntimeImagesConfig()
 	if err != nil {
 		return "", fmt.Errorf("failed to load runtime images config: %w", err)
 	}

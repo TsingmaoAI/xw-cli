@@ -27,6 +27,7 @@ import (
 //   - Human-readable names (for display and logging)
 //   - Capabilities (for compatibility checks)
 //   - Generation info (for version-specific handling)
+//   - Runtime images (Docker images for inference engines)
 type ChipModelConfig struct {
 	// ConfigKey is the unique identifier used in runtime configuration
 	// This key maps to runtime images and deployment settings
@@ -48,6 +49,11 @@ type ChipModelConfig struct {
 	// Capabilities lists supported features and precision modes
 	// Example: ["int8", "fp16", "inference"]
 	Capabilities []string `yaml:"capabilities,omitempty"`
+	
+	// RuntimeImages maps inference engines to their Docker images by architecture
+	// Structure: engine_name -> architecture -> image_url
+	// Example: {"vllm": {"arm64": "quay.io/...", "amd64": "..."}}
+	RuntimeImages map[string]map[string]string `yaml:"runtime_images,omitempty"`
 }
 
 // ChipVendorConfig defines configuration for a chip vendor.
@@ -100,21 +106,10 @@ var (
 	defaultDeviceConfigPath = "/etc/xw/devices.yaml"
 )
 
-// LoadDevicesConfig loads device configuration from the specified file path.
+// LoadDevicesConfig loads device configuration from the default location.
 //
-// This method reads and parses the YAML configuration file, validating the
-// structure and content. If no path is provided, it uses the default location.
-//
-// The configuration is cached after first load. Subsequent calls return the
-// cached configuration without re-reading the file.
-//
-// Configuration File Location Priority:
-//   1. Provided configPath parameter
-//   2. XW_DEVICE_CONFIG environment variable
-//   3. Default: /etc/xw/devices.yaml
-//
-// Parameters:
-//   - configPath: Optional path to configuration file (empty string for default)
+// This function loads the configuration from the default path: /etc/xw/devices.yaml
+// It implements a singleton pattern with caching.
 //
 // Returns:
 //   - Pointer to loaded DevicesConfig
@@ -122,14 +117,37 @@ var (
 //
 // Example:
 //
-//	config, err := LoadDevicesConfig("")
+//	config, err := LoadDevicesConfig()
 //	if err != nil {
 //	    log.Fatalf("Failed to load device config: %v", err)
 //	}
 //	for _, vendor := range config.Vendors {
 //	    fmt.Printf("Loaded vendor: %s\n", vendor.VendorName)
 //	}
-func LoadDevicesConfig(configPath string) (*DevicesConfig, error) {
+func LoadDevicesConfig() (*DevicesConfig, error) {
+	return LoadDevicesConfigFrom("")
+}
+
+// LoadDevicesConfigFrom loads device configuration from a specified path.
+//
+// This function is used when you need to load configuration from a specific
+// file path instead of the default location. It implements a singleton pattern
+// with caching.
+//
+// Parameters:
+//   - configPath: Path to configuration file (empty string for default)
+//
+// Returns:
+//   - Pointer to loaded DevicesConfig
+//   - Error if file cannot be read, parsed, or validated
+//
+// Example:
+//
+//	config, err := LoadDevicesConfigFrom("/custom/path/devices.yaml")
+//	if err != nil {
+//	    log.Fatalf("Failed to load device config: %v", err)
+//	}
+func LoadDevicesConfigFrom(configPath string) (*DevicesConfig, error) {
 	deviceConfigLoader.mu.Lock()
 	defer deviceConfigLoader.mu.Unlock()
 	
@@ -142,14 +160,8 @@ func LoadDevicesConfig(configPath string) (*DevicesConfig, error) {
 	// Determine config file path
 	path := configPath
 	if path == "" {
-		// Check environment variable
-		if envPath := os.Getenv("XW_DEVICE_CONFIG"); envPath != "" {
-			path = envPath
-			logger.Debug("Using device config from XW_DEVICE_CONFIG: %s", path)
-		} else {
-			path = defaultDeviceConfigPath
-			logger.Debug("Using default device config path: %s", path)
-		}
+		path = defaultDeviceConfigPath
+		logger.Debug("Using default device config path: %s", path)
 	}
 	
 	// Check if file exists
@@ -203,7 +215,7 @@ func GetDevicesConfig() (*DevicesConfig, error) {
 	deviceConfigLoader.mu.RUnlock()
 	
 	// Not loaded yet, load with default path
-	return LoadDevicesConfig("")
+	return LoadDevicesConfig()
 }
 
 // ReloadDevicesConfig forces a reload of the device configuration.
@@ -224,7 +236,7 @@ func ReloadDevicesConfig(configPath string) (*DevicesConfig, error) {
 	deviceConfigLoader.mu.Unlock()
 	
 	logger.Info("Reloading device configuration")
-	return LoadDevicesConfig(configPath)
+	return LoadDevicesConfigFrom(configPath)
 }
 
 // validateDevicesConfig performs validation on the loaded configuration.

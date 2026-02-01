@@ -2,18 +2,7 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"runtime"
-
-	"gopkg.in/yaml.v3"
-)
-
-const (
-	// RuntimeImagesFileName is the name of the runtime images configuration file
-	RuntimeImagesFileName = "runtime_images.yaml"
-	
-	// defaultRuntimeImagesConfigPath is the default location for runtime images configuration
-	defaultRuntimeImagesConfigPath = "/etc/xw/runtime_images.yaml"
 )
 
 // RuntimeImagesConfig represents the configuration for Docker images
@@ -34,45 +23,65 @@ const (
 //       amd64: harbor.tsingmao.com/xuanwu/mindie:2.2.RC1-800I-A2-amd64
 type RuntimeImagesConfig map[string]map[string]map[string]string
 
-// LoadRuntimeImagesConfig loads runtime images configuration from the specified file path.
+// LoadRuntimeImagesConfig loads runtime images configuration from devices configuration.
 //
-// This method reads and parses the YAML configuration file. The configuration file
-// location is determined in the following priority order:
-//   1. Provided configPath parameter (if not empty)
-//   2. Default path: /etc/xw/runtime_images.yaml
-//
-// Parameters:
-//   - configPath: Path to the runtime images configuration file (optional)
+// This method extracts runtime images from the devices.yaml configuration file
+// using the default configuration path.
 //
 // Returns:
-//   - RuntimeImagesConfig instance loaded from file
-//   - Error if file cannot be read, parsed, or doesn't exist
+//   - RuntimeImagesConfig instance extracted from devices config
+//   - Error if devices config cannot be loaded
 //
 // Example:
 //
-//	config, err := LoadRuntimeImagesConfig("")
+//	config, err := LoadRuntimeImagesConfig()
 //	if err != nil {
 //	    log.Fatalf("Failed to load runtime images config: %v", err)
 //	}
-func LoadRuntimeImagesConfig(configPath string) (RuntimeImagesConfig, error) {
-	// Determine config path with priority: parameter > default
-	path := configPath
-	if path == "" {
-		path = defaultRuntimeImagesConfigPath
-	}
-	
-	// Load configuration from file
-	data, err := os.ReadFile(path)
+func LoadRuntimeImagesConfig() (RuntimeImagesConfig, error) {
+	return LoadRuntimeImagesConfigFrom("")
+}
+
+// LoadRuntimeImagesConfigFrom loads runtime images configuration from a specific devices config file.
+//
+// This method is used when you need to load from a non-default configuration path.
+//
+// Parameters:
+//   - devicesConfigPath: Path to the devices configuration file
+//
+// Returns:
+//   - RuntimeImagesConfig instance extracted from devices config
+//   - Error if devices config cannot be loaded
+//
+// Example:
+//
+//	config, err := LoadRuntimeImagesConfigFrom("/custom/path/devices.yaml")
+//	if err != nil {
+//	    log.Fatalf("Failed to load runtime images config: %v", err)
+//	}
+func LoadRuntimeImagesConfigFrom(devicesConfigPath string) (RuntimeImagesConfig, error) {
+	// Load devices configuration
+	devicesConfig, err := LoadDevicesConfigFrom(devicesConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read runtime images config from %s: %w", path, err)
+		return nil, fmt.Errorf("failed to load devices config: %w", err)
 	}
 	
-	var config RuntimeImagesConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse runtime images config: %w", err)
+	// Extract runtime images from devices config
+	runtimeImages := make(RuntimeImagesConfig)
+	
+	for _, vendor := range devicesConfig.Vendors {
+		for _, chipModel := range vendor.ChipModels {
+			if len(chipModel.RuntimeImages) > 0 {
+				runtimeImages[chipModel.ConfigKey] = chipModel.RuntimeImages
+			}
+		}
 	}
 	
-	return config, nil
+	if len(runtimeImages) == 0 {
+		return nil, fmt.Errorf("no runtime images found in devices configuration")
+	}
+	
+	return runtimeImages, nil
 }
 
 // GetImageForChipAndEngine returns the Docker image for a specific chip model, engine, and architecture.

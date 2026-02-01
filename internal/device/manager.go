@@ -271,7 +271,7 @@ func (m *Manager) GetDevice(deviceType api.DeviceType) (*Device, error) {
 //	}
 func (m *Manager) GetSupportedTypes() []api.DeviceType {
 	// Load from configuration
-	types, err := config.GetSupportedDeviceTypes("")
+	types, err := config.GetSupportedDeviceTypes()
 	if err != nil {
 		// Configuration is required
 		logger.Warn("Failed to load device types from configuration: %v", err)
