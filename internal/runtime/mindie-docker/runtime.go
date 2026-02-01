@@ -368,7 +368,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		Init:         runtime.BoolPtr(true),        // Use init for proper signal handling
 		ShmSize:      shmSize,                      // Large shared memory for distributed inference
 		RestartPolicy: container.RestartPolicy{
-			Name: "unless-stopped", // Auto-restart unless explicitly stopped
+			Name: "no", // No auto-restart, instance lifecycle managed by xw server
 		},
 	}
 

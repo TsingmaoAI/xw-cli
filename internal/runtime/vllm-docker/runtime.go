@@ -333,7 +333,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		Runtime:      sandbox.GetDockerRuntime(),   // Device-specific runtime (e.g., "runc")
 		Init:         runtime.BoolPtr(true),        // Use init for proper signal handling
 		RestartPolicy: container.RestartPolicy{
-			Name: "unless-stopped", // Auto-restart unless explicitly stopped
+			Name: "no", // No auto-restart, instance lifecycle managed by xw server
 		},
 	}
 	

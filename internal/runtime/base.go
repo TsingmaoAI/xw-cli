@@ -172,7 +172,7 @@ func (b *DockerRuntimeBase) Start(ctx context.Context, instanceID string) error 
 
 	// Update instance state atomically
 	b.mu.Lock()
-	instance.State = StateRunning
+	instance.State = StateStarting
 	instance.StartedAt = time.Now()
 	b.mu.Unlock()
 
@@ -293,8 +293,11 @@ func (b *DockerRuntimeBase) Remove(ctx context.Context, instanceID string) error
 // to read instance metadata, state, and configuration. The returned pointer
 // should not be modified directly - use runtime methods for state changes.
 //
+// This method also checks the actual container status and updates instance state
+// if the container has exited unexpectedly.
+//
 // Parameters:
-//   - ctx: Context for cancellation (currently unused, reserved for future use)
+//   - ctx: Context for cancellation
 //   - instanceID: Unique identifier of the instance to retrieve
 //
 // Returns:
@@ -304,14 +307,64 @@ func (b *DockerRuntimeBase) Remove(ctx context.Context, instanceID string) error
 // Thread Safety: Safe for concurrent calls
 func (b *DockerRuntimeBase) Get(ctx context.Context, instanceID string) (*Instance, error) {
 	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	instance, exists := b.instances[instanceID]
+	b.mu.RUnlock()
+
 	if !exists {
 		return nil, fmt.Errorf("instance not found: %s", instanceID)
 	}
 
+	// Check actual container status and update state if needed
+	b.updateInstanceStateFromContainer(ctx, instance)
+
 	return instance, nil
+}
+
+// updateInstanceStateFromContainer checks the actual container status and updates
+// instance state if the container has exited unexpectedly.
+//
+// This method should be called when querying instance status to ensure the
+// reported state matches the actual container state. It only checks containers
+// that are supposed to be running (StateStarting, StateRunning, StateReady).
+//
+// If the container has exited, the instance state is updated to StateUnhealthy
+// and the exit code and error message are logged.
+//
+// Parameters:
+//   - ctx: Context for cancellation
+//   - inst: Instance to check
+//
+// Thread Safety: Acquires lock when updating state
+func (b *DockerRuntimeBase) updateInstanceStateFromContainer(ctx context.Context, inst *Instance) {
+	// Only check containers that are supposed to be running or starting
+	if inst.State != StateStarting && inst.State != StateRunning && inst.State != StateReady {
+		return
+	}
+	
+	containerID, ok := inst.Metadata["container_id"]
+	if !ok || containerID == "" {
+		return
+	}
+	
+	// Inspect container to get actual status
+	inspect, err := b.client.ContainerInspect(ctx, containerID)
+	if err != nil {
+		logger.Warn("Failed to inspect container %s (instance: %s): %v", containerID[:12], inst.ID, err)
+		return
+	}
+	
+	// If container has exited, update state to unhealthy
+	if !inspect.State.Running {
+		exitCode := inspect.State.ExitCode
+		errorMsg := inspect.State.Error
+		
+		b.mu.Lock()
+		inst.State = StateUnhealthy
+		b.mu.Unlock()
+		
+		logger.Warn("Container %s (instance: %s) exited unexpectedly (exit code: %d, error: %s)", 
+			containerID[:12], inst.ID, exitCode, errorMsg)
+	}
 }
 
 // List returns all instances managed by this runtime.
@@ -319,8 +372,11 @@ func (b *DockerRuntimeBase) Get(ctx context.Context, instanceID string) (*Instan
 // The returned slice contains pointers to all tracked instances, regardless
 // of their state (running, stopped, etc.). The list is a snapshot at call time.
 //
+// This method also checks the actual container status and updates instance state
+// if the container has exited unexpectedly (e.g., due to errors).
+//
 // Parameters:
-//   - ctx: Context for cancellation (currently unused, reserved for future use)
+//   - ctx: Context for cancellation
 //
 // Returns:
 //   - Slice of instance pointers (empty if no instances)
@@ -329,14 +385,18 @@ func (b *DockerRuntimeBase) Get(ctx context.Context, instanceID string) (*Instan
 // Thread Safety: Safe for concurrent calls
 func (b *DockerRuntimeBase) List(ctx context.Context) ([]*Instance, error) {
 	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	instances := make([]*Instance, 0, len(b.instances))
+	instancesList := make([]*Instance, 0, len(b.instances))
 	for _, inst := range b.instances {
-		instances = append(instances, inst)
+		instancesList = append(instancesList, inst)
+	}
+	b.mu.RUnlock()
+
+	// Check actual container status for each instance
+	for _, inst := range instancesList {
+		b.updateInstanceStateFromContainer(ctx, inst)
 	}
 
-	return instances, nil
+	return instancesList, nil
 }
 
 // Logs retrieves container logs for an instance.
