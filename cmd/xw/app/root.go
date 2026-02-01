@@ -65,6 +65,9 @@ The xw CLI communicates with a local server process over HTTP. Make sure the
 xw server is running before executing commands.`,
 		SilenceUsage: true,
 		// SilenceErrors is false by default - we want to show errors to users
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true, // Disable auto-generated completion command
+		},
 	}
 
 	// Add global flags

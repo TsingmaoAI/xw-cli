@@ -64,6 +64,7 @@ create_package_structure() {
     mkdir -p "${pkg_dir}/systemd"
     mkdir -p "${pkg_dir}/scripts"
     mkdir -p "${pkg_dir}/docs"
+    mkdir -p "${pkg_dir}/configs"
     
     # Copy binary
     cp "${RELEASE_DIR}/xw-linux-${arch}" "${pkg_dir}/bin/xw"
@@ -71,6 +72,10 @@ create_package_structure() {
     
     # Copy systemd service
     cp "${PROJECT_DIR}/systemd/xw-server.service" "${pkg_dir}/systemd/"
+    
+    # Copy configuration files
+    cp "${PROJECT_DIR}/configs/devices.yaml" "${pkg_dir}/configs/"
+    cp "${PROJECT_DIR}/configs/models.yaml" "${pkg_dir}/configs/"
     
     # Copy scripts
     cp "${PROJECT_DIR}/scripts/install.sh" "${pkg_dir}/scripts/"
@@ -92,8 +97,29 @@ Quick Install:
    tar -xzf xw-*.tar.gz
    cd xw-*
 
-2. Run installation script:
-   sudo bash scripts/install.sh
+2. Choose installation mode:
+
+   # User installation (no sudo required)
+   bash scripts/install.sh
+   
+   # System installation (requires sudo, installs as service)
+   sudo bash scripts/install.sh --system
+
+Installation Modes:
+-------------------
+User Installation (default):
+  - Binary: ~/.local/bin/xw
+  - Config: ~/.xw/*.yaml
+  - Data:   ~/.xw/data/
+  - No systemd service
+  - Run manually: xw serve
+
+System Installation (--system):
+  - Binary: /usr/local/bin/xw
+  - Config: /etc/xw/*.yaml
+  - Data:   /var/lib/xw/
+  - Systemd service installed
+  - Auto-start: systemctl enable xw-server
 
 Manual Install:
 ---------------

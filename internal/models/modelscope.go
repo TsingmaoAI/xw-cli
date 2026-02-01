@@ -18,6 +18,7 @@
 package models
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -29,7 +30,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -42,8 +45,8 @@ const (
 	// DefaultNamespace is the default namespace for models without an explicit namespace
 	DefaultNamespace = "default"
 	
-	// ChunkSize for file downloads (8MB)
-	ChunkSize = 8 * 1024 * 1024
+	// ChunkSize for file downloads (64MB for better throughput)
+	ChunkSize = 64 * 1024 * 1024
 	
 	// ParallelDownloadThreshold - files larger than this will use parallel download (500MB)
 	ParallelDownloadThreshold = 500 * 1024 * 1024
@@ -66,7 +69,28 @@ type Client struct {
 // Parameters: filename, bytesDownloaded, totalBytes
 type ProgressFunc func(filename string, downloaded, total int64)
 
-// NewClient creates a new ModelScope client with default settings.
+// getTerminalWidth returns the width of the terminal, or 80 as default
+func getTerminalWidth() int {
+	type winsize struct {
+		Row    uint16
+		Col    uint16
+		Xpixel uint16
+		Ypixel uint16
+	}
+	
+	ws := &winsize{}
+	retCode, _, _ := syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(syscall.Stdout),
+		uintptr(syscall.TIOCGWINSZ),
+		uintptr(unsafe.Pointer(ws)))
+	
+	if int(retCode) == -1 {
+		return 80 // Default width
+	}
+	return int(ws.Col)
+}
+
+// NewClient creates a new ModelScope client with optimized settings for large file downloads.
 func NewClient() *Client {
 	return &Client{
 		endpoint:  DefaultEndpoint,
@@ -74,9 +98,15 @@ func NewClient() *Client {
 		httpClient: &http.Client{
 			Timeout: 0, // No timeout for large downloads
 			Transport: &http.Transport{
-				MaxIdleConns:        100,
-				MaxIdleConnsPerHost: 10,
-				IdleConnTimeout:     90 * time.Second,
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   10,
+				IdleConnTimeout:       90 * time.Second,
+				DisableCompression:    true,             // Files are already compressed
+				ForceAttemptHTTP2:     true,             // Enable HTTP/2 for better performance
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+				WriteBufferSize:       128 * 1024, // 128KB write buffer
+				ReadBufferSize:        128 * 1024, // 128KB read buffer
 			},
 		},
 	}
@@ -149,6 +179,90 @@ func (c *Client) DownloadModel(
 		return "", fmt.Errorf("failed to get model files: %w", err)
 	}
 	
+	// Calculate total size of all files for overall progress tracking
+	var totalBytes int64
+	for _, file := range files {
+		totalBytes += file.Size
+	}
+	
+	// Track progress across all files (sequential, no locking needed)
+	var downloadedBytes int64
+	startTime := time.Now()
+	
+	// Wrapper progress function that reports overall progress (ollama-style)
+	overallProgressFunc := func(filename string, fileDownloaded, fileTotal int64) {
+		if progress == nil {
+			return
+		}
+		
+		// For non-progress messages (validation, etc), pass through directly
+		if fileTotal == 0 {
+			progress(filename, 0, 0)
+			return
+		}
+		
+		// Calculate overall progress
+		overall := downloadedBytes + fileDownloaded
+		percent := float64(overall) / float64(totalBytes) * 100
+		
+		// Calculate average speed and ETA
+		elapsed := time.Since(startTime).Seconds()
+		var speedMBps float64
+		var eta string
+		
+		if elapsed > 0 && overall > 0 {
+			speedMBps = float64(overall) / elapsed / (1024 * 1024) // MB/s
+			
+			if speedMBps > 0 {
+				remainingBytes := totalBytes - overall
+				etaSeconds := int(float64(remainingBytes) / (speedMBps * 1024 * 1024))
+				if etaSeconds > 0 {
+					minutes := etaSeconds / 60
+					seconds := etaSeconds % 60
+					if minutes > 0 {
+						eta = fmt.Sprintf("%dm%ds", minutes, seconds)
+					} else {
+						eta = fmt.Sprintf("%ds", seconds)
+					}
+				}
+			}
+		}
+		
+		// Format sizes
+		downloadedGB := float64(overall) / (1024 * 1024 * 1024)
+		totalGB := float64(totalBytes) / (1024 * 1024 * 1024)
+		
+		// Get terminal width and calculate progress bar width
+		termWidth := getTerminalWidth()
+		// Reserve space for: "100% |" + "| 99.9/99.9 GB  999.9 MB/s  99m99s"
+		// Roughly: 5 + 3 + 42 = 50 chars
+		barWidth := termWidth - 50
+		if barWidth < 20 {
+			barWidth = 20 // Minimum bar width
+		}
+		if barWidth > 80 {
+			barWidth = 80 // Maximum bar width for readability
+		}
+		
+		filled := int(float64(barWidth) * percent / 100)
+		bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
+		
+		// Format message
+		var message string
+		if speedMBps > 0 && eta != "" {
+			message = fmt.Sprintf("%3.0f%% |%s| %.1f/%.1f GB  %.1f MB/s  %s", 
+				percent, bar, downloadedGB, totalGB, speedMBps, eta)
+		} else if speedMBps > 0 {
+			message = fmt.Sprintf("%3.0f%% |%s| %.1f/%.1f GB  %.1f MB/s", 
+				percent, bar, downloadedGB, totalGB, speedMBps)
+		} else {
+			message = fmt.Sprintf("%3.0f%% |%s| %.1f/%.1f GB", 
+				percent, bar, downloadedGB, totalGB)
+		}
+		
+		progress(message, overall, totalBytes)
+	}
+	
 	// Download files sequentially (no parallel downloads)
 	// Model files are typically large, so parallel downloads don't help much
 	for _, file := range files {
@@ -161,14 +275,17 @@ func (c *Client) DownloadModel(
 		
 		localPath := filepath.Join(modelDir, file.Name)
 		
-		// Download file using sourceID for API requests
-		if err := c.downloadFile(ctx, file, localPath, sourceID, progress); err != nil {
+		// Download file using sourceID for API requests with overall progress tracking
+		if err := c.downloadFile(ctx, file, localPath, sourceID, overallProgressFunc); err != nil {
 			// Don't report error if context was cancelled
 			if ctx.Err() != nil {
 				return "", ctx.Err()
 			}
 			return "", fmt.Errorf("failed to download %s: %w", file.Name, err)
 		}
+		
+		// Update total downloaded bytes after completing this file
+		downloadedBytes += file.Size
 		
 		// Validate file integrity if SHA256 is available
 		if file.Sha256 != "" {
@@ -179,22 +296,13 @@ func (c *Client) DownloadModel(
 			default:
 			}
 			
-			// Notify user that validation is in progress (can take time for large files)
-			if progress != nil {
-				progress(fmt.Sprintf("Verifying %s", file.Name), 0, 0)
-			}
-			
+			// Silently validate (no progress message to avoid line breaks)
 			if err := c.validateFileIntegrity(localPath, file.Sha256); err != nil {
 				// Don't report error if context was cancelled
 				if ctx.Err() != nil {
 					return "", ctx.Err()
 				}
 				return "", fmt.Errorf("integrity check failed for %s: %w", file.Name, err)
-			}
-			
-			// Notify completion
-			if progress != nil {
-				progress(fmt.Sprintf("✓ Verified %s", file.Name), 0, 0)
 			}
 		}
 	}
@@ -673,38 +781,30 @@ func (c *Client) downloadFile(
 			return err
 		}
 	}
-	defer func() {
-		out.Close()
-		// Clean up temp file on error
-		if err != nil {
-			os.Remove(tmpPath)
-		}
-	}()
+	defer out.Close()
+	
+	// Use buffered writer for better I/O performance (8MB buffer)
+	bufWriter := bufio.NewWriterSize(out, 8*1024*1024)
 	
 	// Download with progress tracking
-	// Start from resumeFrom if we're resuming
 	downloaded := resumeFrom
 	buf := make([]byte, ChunkSize)
 	lastReport := time.Now()
 	
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
-			if _, writeErr := out.Write(buf[:n]); writeErr != nil {
+			if _, writeErr := bufWriter.Write(buf[:n]); writeErr != nil {
+				os.Remove(tmpPath)
 				return writeErr
 			}
 			downloaded += int64(n)
 			
-			// Report progress every 500ms to reduce callback overhead
-			shouldReport := time.Since(lastReport) > 500*time.Millisecond
-			if progress != nil && shouldReport {
-				progress(file.Name, downloaded, file.Size)
+			// Report progress every 500ms
+			if time.Since(lastReport) > 500*time.Millisecond {
+				if progress != nil {
+					progress(file.Name, downloaded, file.Size)
+				}
 				lastReport = time.Now()
 			}
 		}
@@ -713,8 +813,23 @@ func (c *Client) downloadFile(
 			break
 		}
 		if readErr != nil {
+			os.Remove(tmpPath)
 			return readErr
 		}
+		
+		// Occasionally check context cancellation
+		select {
+		case <-ctx.Done():
+			os.Remove(tmpPath)
+			return ctx.Err()
+		default:
+		}
+	}
+	
+	// Flush buffered data to disk - CRITICAL!
+	if err := bufWriter.Flush(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to flush data: %w", err)
 	}
 	
 	// Final progress report

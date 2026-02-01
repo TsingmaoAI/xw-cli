@@ -23,7 +23,8 @@ BIN_DIR := bin
 INSTALL_DIR := /usr/local/bin
 SYSTEMD_DIR := /etc/systemd/system
 CONFIG_DIR := /etc/xw
-DATA_DIR := /opt/xw
+DATA_DIR := /var/lib/xw
+LOG_DIR := /var/log/xw
 
 # Targets
 CLI_TARGET := $(BIN_DIR)/xw
@@ -85,10 +86,10 @@ clean: ## Clean build artifacts
 	@echo "✓ Clean complete"
 
 .PHONY: install
-install: build ## Install binaries and systemd service
-	@echo "Installing xw..."
+install: build ## Install binaries and systemd service (system-wide)
+	@echo "Installing xw (system-wide)..."
 	@if [ "$$(id -u)" -ne 0 ]; then \
-		echo "Error: Installation requires root privileges. Please run with sudo."; \
+		echo "Error: System installation requires root privileges. Please run with sudo."; \
 		exit 1; \
 	fi
 	
@@ -106,9 +107,18 @@ install: build ## Install binaries and systemd service
 	install -d -m 755 $(CONFIG_DIR)
 	install -d -m 755 -o xw -g xw $(DATA_DIR)
 	install -d -m 755 -o xw -g xw $(DATA_DIR)/models
-	install -d -m 755 /var/log/xw
-	chown xw:xw /var/log/xw
+	install -d -m 755 -o xw -g xw $(LOG_DIR)
 	@echo "✓ Directories created"
+	
+	# Install configuration files
+	@if [ -f configs/devices.yaml ]; then \
+		install -m 644 configs/devices.yaml $(CONFIG_DIR)/devices.yaml; \
+		echo "✓ Installed devices.yaml"; \
+	fi
+	@if [ -f configs/models.yaml ]; then \
+		install -m 644 configs/models.yaml $(CONFIG_DIR)/models.yaml; \
+		echo "✓ Installed models.yaml"; \
+	fi
 	
 	# Install systemd service
 	install -m 644 systemd/xw-server.service $(SYSTEMD_DIR)/xw-server.service
@@ -117,9 +127,45 @@ install: build ## Install binaries and systemd service
 	
 	@echo ""
 	@echo "Installation complete!"
+	@echo "Configuration: $(CONFIG_DIR)"
+	@echo "Data directory: $(DATA_DIR)"
+	@echo ""
 	@echo "To start the service:"
 	@echo "  sudo systemctl start xw-server"
 	@echo "  sudo systemctl enable xw-server"
+
+.PHONY: install-user
+install-user: build ## Install for current user (no root required)
+	@echo "Installing xw for current user..."
+	@mkdir -p $(HOME)/.local/bin
+	@mkdir -p $(HOME)/.xw
+	@mkdir -p $(HOME)/.xw/data/models
+	
+	# Install binary
+	install -m 755 $(CLI_TARGET) $(HOME)/.local/bin/xw
+	@echo "✓ Binary installed to $(HOME)/.local/bin/xw"
+	
+	# Install configuration files
+	@if [ -f configs/devices.yaml ] && [ ! -f $(HOME)/.xw/devices.yaml ]; then \
+		install -m 644 configs/devices.yaml $(HOME)/.xw/devices.yaml; \
+		echo "✓ Installed devices.yaml"; \
+	fi
+	@if [ -f configs/models.yaml ] && [ ! -f $(HOME)/.xw/models.yaml ]; then \
+		install -m 644 configs/models.yaml $(HOME)/.xw/models.yaml; \
+		echo "✓ Installed models.yaml"; \
+	fi
+	
+	@echo ""
+	@echo "User installation complete!"
+	@echo "Binary: $(HOME)/.local/bin/xw"
+	@echo "Config: $(HOME)/.xw/"
+	@echo "Data:   $(HOME)/.xw/data/"
+	@echo ""
+	@echo "Make sure $(HOME)/.local/bin is in your PATH:"
+	@echo "  export PATH=\"\$$HOME/.local/bin:\$$PATH\""
+	@echo ""
+	@echo "To start the server:"
+	@echo "  xw serve"
 
 .PHONY: uninstall
 uninstall: ## Uninstall binaries and systemd service

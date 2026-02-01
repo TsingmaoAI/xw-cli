@@ -74,31 +74,17 @@ func runPull(opts *PullOptions) error {
 
 	fmt.Printf("Pulling %s...\n", opts.Model)
 
-	// Pull model with simple progress display
-	var lastWasProgress bool
-	
+	// Pull model with single-line progress display
 	resp, err := client.Pull(opts.Model, "", func(message string) {
-		// Simple progress display: overwrite for progress, new line for status
-		isProgress := strings.Contains(message, "%")
-		
-		if isProgress {
-			// Progress message - overwrite current line
-			fmt.Printf("\r%s", message)
-			lastWasProgress = true
-		} else {
-			// Status message - print on new line
-			if lastWasProgress {
-				fmt.Println() // End previous progress line
-			}
-			fmt.Println(message)
-			lastWasProgress = false
+		// Only show progress bar (contains % and |)
+		if strings.Contains(message, "%") && strings.Contains(message, "|") {
+			// Use \r to overwrite, \033[K to clear to end of line
+			fmt.Printf("\r\033[K%s", message)
 		}
+		// Silently ignore all other messages
 	})
 	
-	// Ensure we end with a newline
-	if lastWasProgress {
-		fmt.Println()
-	}
+	// Move to newline when done
 	fmt.Println()
 	
 	if err != nil {

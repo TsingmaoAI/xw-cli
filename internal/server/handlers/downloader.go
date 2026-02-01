@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/tsingmao/xw/internal/logger"
@@ -102,15 +101,7 @@ func (h *Handler) downloadModelStreaming(ctx context.Context, modelName, modelID
 	}()
 	
 	// Progress callback for real-time SSE updates
-	// Use mutex to protect concurrent access from multiple download goroutines
-	// Track progress per file since we're downloading multiple files concurrently
-	var progressMutex sync.Mutex
-	type fileProgress struct {
-		lastPercent float64
-		lastUpdate  time.Time
-	}
-	fileProgressMap := make(map[string]*fileProgress)
-	
+	// Simple passthrough - modelscope.DownloadModel handles formatting
 	progressFunc := func(filename string, downloaded, total int64) {
 		// Check if context is cancelled (client disconnected)
 		select {
@@ -119,9 +110,6 @@ func (h *Handler) downloadModelStreaming(ctx context.Context, modelName, modelID
 		default:
 		}
 		
-		progressMutex.Lock()
-		defer progressMutex.Unlock()
-		
 		// Add panic recovery to prevent server crash on write errors
 		defer func() {
 			if r := recover(); r != nil {
@@ -129,53 +117,15 @@ func (h *Handler) downloadModelStreaming(ctx context.Context, modelName, modelID
 			}
 		}()
 		
-		now := time.Now()
-		
-		// Get or create progress tracking for this file
-		fp, exists := fileProgressMap[filename]
-		if !exists {
-			fp = &fileProgress{
-				lastPercent: -1.0,
-				lastUpdate:  now,
-			}
-			fileProgressMap[filename] = fp
+		// Send progress message directly from modelscope
+		// The message is already formatted by overallProgressFunc
+		sseMsg := map[string]string{
+			"type":    "progress",
+			"message": filename, // This is actually the formatted message from overallProgressFunc
 		}
-		
-		// Send progress updates with rate limiting
-		if total > 0 {
-			percent := float64(downloaded) / float64(total) * 100
-			
-			// Rate limit: send update only if:
-			// 1. Progress increased by at least 5%, OR
-			// 2. At least 1 second has passed since last update
-			percentDiff := percent - fp.lastPercent
-			timeSinceUpdate := now.Sub(fp.lastUpdate)
-			
-			if percentDiff >= 5.0 || timeSinceUpdate >= 1*time.Second {
-				msg := fmt.Sprintf("Downloading %s: %.1f%%", filename, percent)
-				sseMsg := map[string]string{
-					"type":    "progress",
-					"message": msg,
-				}
-				msgJSON, _ := json.Marshal(sseMsg)
-				fmt.Fprintf(w, "data: %s\n\n", msgJSON)
-				flusher.Flush()
-				
-				fp.lastPercent = percent
-				fp.lastUpdate = now
-			}
-		} else {
-			// For messages without progress (e.g., "Verifying...", "✓ Verified...")
-			// Always send these messages
-			msg := filename // filename contains the full message in this case
-			sseMsg := map[string]string{
-				"type":    "progress",
-				"message": msg,
-			}
-			msgJSON, _ := json.Marshal(sseMsg)
-			fmt.Fprintf(w, "data: %s\n\n", msgJSON)
-			flusher.Flush()
-		}
+		msgJSON, _ := json.Marshal(sseMsg)
+		fmt.Fprintf(w, "data: %s\n\n", msgJSON)
+		flusher.Flush()
 	}
 	
 	// Download model using pure Go implementation
