@@ -179,18 +179,14 @@ install_xw() {
     # Make install script executable
     chmod +x "$install_script"
     
-    # Check if running as root or sudo available
-    local need_sudo=false
-    if [ "$EUID" -ne 0 ]; then
-        if command_exists sudo; then
-            need_sudo=true
-            print_warning "This installation requires root privileges"
-            print_info "You may be prompted for your password"
-        else
-            print_error "This installation requires root privileges"
-            print_error "Please run as root or install sudo"
-            exit 1
-        fi
+    # Determine installation mode
+    local install_mode="user"
+    if [ "$EUID" -eq 0 ]; then
+        install_mode="system"
+        print_info "Running as root - will install system-wide"
+    else
+        print_info "Running as regular user - will install to user directory"
+        print_info "Installation path: ~/.local/bin"
     fi
     echo ""
     
@@ -198,10 +194,10 @@ install_xw() {
     print_info "Running installation..."
     cd "$extract_dir"
     
-    if [ "$need_sudo" = true ]; then
-        sudo ./scripts/install.sh
-    else
+    if [ "$install_mode" = "system" ]; then
         ./scripts/install.sh
+    else
+        ./scripts/install.sh --user
     fi
     
     echo ""
@@ -217,7 +213,11 @@ install_xw() {
         print_info "You may need to:"
         print_info "  1. Start a new terminal session"
         print_info "  2. Or run: source ~/.bashrc (or ~/.zshrc)"
-        print_info "  3. Or add /usr/local/bin to your PATH"
+        if [ "$install_mode" = "user" ]; then
+            print_info "  3. Or add ~/.local/bin to your PATH"
+        else
+            print_info "  3. Or add /usr/local/bin to your PATH"
+        fi
     fi
     echo ""
     
