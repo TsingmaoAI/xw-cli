@@ -1,0 +1,26 @@
+[Unit]
+Description=XW AI Inference Server
+Documentation=https://github.com/tsingmao/xw
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xw serve --host 127.0.0.1
+
+# Restart configuration
+Restart=on-failure
+RestartSec=5s
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xw
+
+[Install]
+WantedBy=multi-user.target
+

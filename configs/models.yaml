@@ -1,0 +1,100 @@
+# XW Model Configuration
+# This file defines AI models that can be deployed and served by xw.
+#
+# Configuration File Locations (in priority order):
+#   1. Path specified in LoadModelsConfig(path)
+#   2. /etc/xw/models.yaml (default)
+
+version: "1.0"
+
+models:
+  # Qwen2 0.5B
+  - model_id: qwen2-0.5b
+    source_id: qwen/Qwen2-0.5B
+    
+    # Model specifications
+    parameters: 0.5
+    context_length: 32768
+    
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+    
+    tag: main
+    capabilities:
+      - completion
+
+  # Qwen2 7B
+  - model_id: qwen2-7b
+    source_id: qwen/Qwen2-7B
+    
+    # Model specifications
+    parameters: 7.0
+    context_length: 131072
+    
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+    
+    capabilities:
+      - completion
+
+  # Qwen2 72B
+  - model_id: qwen2-72b
+    source_id: qwen/Qwen2-72B
+    
+    # Model specifications
+    parameters: 72.0
+    context_length: 131072
+    
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+    
+    capabilities:
+      - completion
+
+  # Qwen2.5 7B Instruct
+  - model_id: qwen2.5-7b-instruct
+    source_id: qwen/Qwen2.5-7B-Instruct
+    
+    # Model specifications
+    parameters: 7.6
+    context_length: 131072
+    
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+    
+    capabilities:
+      - completion
+
+# Notes:
+# - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")
+# - source_id: Model ID on source platform (e.g., ModelScope ID "qwen/Qwen2-7B")
+# - supported_devices: Must match config_key from devices.yaml
+# - engines: Listed in priority order (format: backend:mode)
+#   - backend: vllm, mindie, mlguider
+#   - mode: docker, native
+#   - examples: vllm:docker, mindie:native, mlguider:docker
+# - tag: Model variant (e.g., "main", "int8", "fp16")
+# - capabilities: Supported features (e.g., "completion", "vision", "tool_use")

@@ -1,0 +1,49 @@
+# XW Runtime Parameters Configuration
+# This file defines parameter templates for specific runtime configurations.
+#
+# Template Naming Convention:
+#   {chip_config_key}_{model_id}_{backend_name}
+#   Example: ascend-910b_qwen2-72b_mlguider
+#
+# Parameters Format:
+#   - Each parameter must be in key=value format
+#   - Keys will be converted to uppercase environment variables
+#   - Camel case (tensorParallel) -> TENSOR_PARALLEL
+#   - Kebab case (tensor-parallel) -> TENSOR_PARALLEL
+#
+# Configuration File Locations (in priority order):
+#   1. Path specified in LoadRuntimeParamsConfigFrom(path)
+#   2. ~/.xw/runtime_params.yaml (default)
+#
+# Note: This file is optional. If not present, no template parameters will be applied.
+
+version: "1.0"
+
+templates:
+  # Example: Ascend 910B with Qwen2 72B using MLGuider
+  # - name: ascend-910b_qwen2-72b_mlguider
+  #   params:
+  #     - max_batch_size=128
+  #     - tensor_parallel=4
+  #     - max_seq_len=4096
+
+  # # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
+  # - name: ascend-910b_qwen2.5-7b-instruct_vllm
+  #   params:
+  #     - gpu_memory_utilization=0.9
+  #     - max_model_len=8192
+  #     - tensor_parallel_size=1
+
+  # # Example: Ascend 310P with Qwen2.5 7B using vLLM
+  # - name: ascend-310p_qwen2.5-7b-instruct_vllm
+  #   params:
+  #     - world_size=1
+  #     - device_id=0
+  #     - precision=fp16
+
+# Notes:
+# - Template names must be unique
+# - Parameters are case-sensitive in their values
+# - Empty values are allowed (e.g., "debug=")
+# - Parameters are passed as environment variables to the runtime
+
