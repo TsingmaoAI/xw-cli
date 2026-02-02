@@ -21,25 +21,25 @@ version: "1.0"
 
 templates:
   # Example: Ascend 910B with Qwen2 72B using MLGuider
-  - name: ascend-910b_qwen2-72b_mlguider
-    params:
-      - max_batch_size=128
-      - tensor_parallel=4
-      - max_seq_len=4096
+  # - name: ascend-910b_qwen2-72b_mlguider
+  #   params:
+  #     - max_batch_size=128
+  #     - tensor_parallel=4
+  #     - max_seq_len=4096
 
-  # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
-  - name: ascend-910b_qwen2.5-7b-instruct_vllm
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=8192
-      - tensor_parallel_size=1
+  # # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
+  # - name: ascend-910b_qwen2.5-7b-instruct_vllm
+  #   params:
+  #     - gpu_memory_utilization=0.9
+  #     - max_model_len=8192
+  #     - tensor_parallel_size=1
 
-  # Example: Ascend 310P with Qwen2.5 7B using vLLM
-  - name: ascend-310p_qwen2.5-7b-instruct_vllm
-    params:
-      - world_size=1
-      - device_id=0
-      - precision=fp16
+  # # Example: Ascend 310P with Qwen2.5 7B using vLLM
+  # - name: ascend-310p_qwen2.5-7b-instruct_vllm
+  #   params:
+  #     - world_size=1
+  #     - device_id=0
+  #     - precision=fp16
 
 # Notes:
 # - Template names must be unique

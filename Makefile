@@ -119,6 +119,10 @@ install: build ## Install binaries and systemd service (system-wide)
 		install -m 644 configs/models.yaml $(CONFIG_DIR)/models.yaml; \
 		echo "✓ Installed models.yaml"; \
 	fi
+	@if [ -f configs/runtime_params.yaml ]; then \
+		install -m 644 configs/runtime_params.yaml $(CONFIG_DIR)/runtime_params.yaml; \
+		echo "✓ Installed runtime_params.yaml"; \
+	fi
 	
 	# Install systemd service
 	install -m 644 systemd/xw-server.service $(SYSTEMD_DIR)/xw-server.service
@@ -153,6 +157,10 @@ install-user: build ## Install for current user (no root required)
 	@if [ -f configs/models.yaml ] && [ ! -f $(HOME)/.xw/models.yaml ]; then \
 		install -m 644 configs/models.yaml $(HOME)/.xw/models.yaml; \
 		echo "✓ Installed models.yaml"; \
+	fi
+	@if [ -f configs/runtime_params.yaml ] && [ ! -f $(HOME)/.xw/runtime_params.yaml ]; then \
+		install -m 644 configs/runtime_params.yaml $(HOME)/.xw/runtime_params.yaml; \
+		echo "✓ Installed runtime_params.yaml"; \
 	fi
 	
 	@echo ""

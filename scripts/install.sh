@@ -180,12 +180,14 @@ install_configs() {
         print_warn "Configuration files already exist, creating backups..."
         cp "$CONFIG_DIR/devices.yaml" "$CONFIG_DIR/devices.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
         cp "$CONFIG_DIR/models.yaml" "$CONFIG_DIR/models.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+        cp "$CONFIG_DIR/runtime_params.yaml" "$CONFIG_DIR/runtime_params.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
     fi
     
     # Install config files
     if [ -d "configs" ]; then
         install -m 644 configs/devices.yaml "$CONFIG_DIR/devices.yaml"
         install -m 644 configs/models.yaml "$CONFIG_DIR/models.yaml"
+        [ -f configs/runtime_params.yaml ] && install -m 644 configs/runtime_params.yaml "$CONFIG_DIR/runtime_params.yaml"
         print_info "✓ Configuration files installed"
     else
         print_warn "Configuration files not found in package, skipping"

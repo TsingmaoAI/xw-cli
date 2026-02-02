@@ -76,6 +76,7 @@ create_package_structure() {
     # Copy configuration files
     cp "${PROJECT_DIR}/configs/devices.yaml" "${pkg_dir}/configs/"
     cp "${PROJECT_DIR}/configs/models.yaml" "${pkg_dir}/configs/"
+    cp "${PROJECT_DIR}/configs/runtime_params.yaml" "${pkg_dir}/configs/"
     
     # Copy scripts
     cp "${PROJECT_DIR}/scripts/install.sh" "${pkg_dir}/scripts/"
