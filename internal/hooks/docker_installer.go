@@ -10,7 +10,7 @@ import (
 	"strings"
 	
 	"github.com/creack/pty"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // DockerInstaller handles Docker installation and image management.

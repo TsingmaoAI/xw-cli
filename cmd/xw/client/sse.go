@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // SSEMessage represents a parsed Server-Sent Events message.

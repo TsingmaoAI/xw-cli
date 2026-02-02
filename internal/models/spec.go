@@ -8,7 +8,7 @@ package models
 import (
 	"fmt"
 	
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // BackendOption specifies a backend choice with its deployment mode

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // PullOptions holds options for the pull command

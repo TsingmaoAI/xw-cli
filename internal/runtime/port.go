@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // PortAllocator manages dynamic port allocation for model instances.

@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/tsingmao/xw/internal/config"
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/server"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/server"
 )
 
 // ServeOptions holds options for the serve command

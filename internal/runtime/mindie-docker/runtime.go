@@ -27,8 +27,8 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // Runtime implements the runtime.Runtime interface for MindIE with Docker.

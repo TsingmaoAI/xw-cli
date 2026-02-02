@@ -4,7 +4,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // Health handles health check requests from monitoring systems and load balancers.

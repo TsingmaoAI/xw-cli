@@ -16,8 +16,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 
-	"github.com/tsingmao/xw/internal/config"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // DockerRuntimeBase provides common Docker operations for runtime implementations.

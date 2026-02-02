@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/models"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/models"
 )
 
 // ListModels handles requests to list available AI models.

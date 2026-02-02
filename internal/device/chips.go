@@ -2,7 +2,7 @@
 package device
 
 import (
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // ChipVendor represents a chip vendor's PCI vendor ID and name

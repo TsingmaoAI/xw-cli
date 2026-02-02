@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/models"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/models"
 )
 
 // downloadModelStreaming downloads an AI model with real-time SSE progress streaming.

@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 	
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // RuntimeParamsTemplate represents a parameter template for a specific runtime configuration.

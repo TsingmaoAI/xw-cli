@@ -12,7 +12,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // doRequest performs an HTTP request to the server.

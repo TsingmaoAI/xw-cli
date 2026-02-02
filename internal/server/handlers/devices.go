@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // ListDevices handles GET /api/devices/list requests.

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tsingmao/xw/internal/config"
-	runtime "github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	runtime "github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // MetaXSandbox provides vLLM runtime sandbox for MetaX AI accelerators.

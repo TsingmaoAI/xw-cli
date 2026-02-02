@@ -3,7 +3,7 @@ package runtime
 import (
 	"strings"
 	
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // convertTemplateParamsToEnv converts template parameters to environment variables.

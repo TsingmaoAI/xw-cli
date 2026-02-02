@@ -7,8 +7,8 @@ package config
 import (
 	"fmt"
 	
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // ChipModelInfo represents chip model information in a format usable by device package.

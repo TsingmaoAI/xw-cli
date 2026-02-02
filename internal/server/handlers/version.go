@@ -4,7 +4,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // Version handles requests for server version information.

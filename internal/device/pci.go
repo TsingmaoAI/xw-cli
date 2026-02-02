@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/config"
 )
 
 // PCIDevice represents a PCI device with its identifiers

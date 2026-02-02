@@ -1,4 +1,4 @@
-module github.com/tsingmao/xw
+module github.com/tsingmaoai/xw-cli
 
 go 1.24.0
 

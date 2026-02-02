@@ -6,7 +6,7 @@
 package client
 
 import (
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // Run executes a model on the server with the given input.

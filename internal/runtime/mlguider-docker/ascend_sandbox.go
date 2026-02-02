@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tsingmao/xw/internal/config"
-	"github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // AscendSandbox handles parameter transformation for Ascend NPU devices in MLGuider.

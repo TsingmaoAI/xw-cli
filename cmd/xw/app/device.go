@@ -6,7 +6,7 @@ import (
 	"text/tabwriter"
 	
 	"github.com/spf13/cobra"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // NewDeviceCommand creates the device command for hardware detection

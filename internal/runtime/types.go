@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 	
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // Type aliases for convenience

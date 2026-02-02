@@ -20,7 +20,7 @@ package main
 import (
 	"os"
 
-	"github.com/tsingmao/xw/cmd/xw/app"
+	"github.com/tsingmaoai/xw-cli/cmd/xw/app"
 )
 
 func main() {

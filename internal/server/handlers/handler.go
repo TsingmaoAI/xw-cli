@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/config"
-	"github.com/tsingmao/xw/internal/device"
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/models"
-	"github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/device"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/models"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // Handler encapsulates all dependencies required by API handlers.

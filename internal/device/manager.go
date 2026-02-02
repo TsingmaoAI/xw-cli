@@ -17,9 +17,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/config"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/config"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // Device represents a detected domestic chip device with its metadata.

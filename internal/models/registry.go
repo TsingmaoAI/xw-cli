@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 // Registry manages the catalog of available AI models and their metadata.

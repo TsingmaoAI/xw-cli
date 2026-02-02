@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // ProxyHandler handles proxying requests to inference services.

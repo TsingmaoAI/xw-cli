@@ -3,12 +3,12 @@ package server
 import (
 	"fmt"
 	
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/models"
-	"github.com/tsingmao/xw/internal/runtime"
-	mindiedocker "github.com/tsingmao/xw/internal/runtime/mindie-docker"
-	mlguiderdocker "github.com/tsingmao/xw/internal/runtime/mlguider-docker"
-	vllmdocker "github.com/tsingmao/xw/internal/runtime/vllm-docker"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/models"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
+	mindiedocker "github.com/tsingmaoai/xw-cli/internal/runtime/mindie-docker"
+	mlguiderdocker "github.com/tsingmaoai/xw-cli/internal/runtime/mlguider-docker"
+	vllmdocker "github.com/tsingmaoai/xw-cli/internal/runtime/vllm-docker"
 )
 
 // InitializeModels loads and registers models from configuration.

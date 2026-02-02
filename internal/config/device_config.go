@@ -16,7 +16,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 	
-	"github.com/tsingmao/xw/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
 

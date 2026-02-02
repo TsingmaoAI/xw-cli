@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tsingmao/xw/cmd/xw/client"
-	"github.com/tsingmao/xw/internal/api"
+	"github.com/tsingmaoai/xw-cli/cmd/xw/client"
+	"github.com/tsingmaoai/xw-cli/internal/api"
 )
 
 // ListOptions holds options for the list command

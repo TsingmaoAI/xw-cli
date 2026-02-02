@@ -11,11 +11,11 @@ import (
 	"time"
 	
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/tsingmao/xw/internal/api"
-	"github.com/tsingmao/xw/internal/hooks"
-	"github.com/tsingmao/xw/internal/logger"
-	"github.com/tsingmao/xw/internal/models"
-	"github.com/tsingmao/xw/internal/runtime"
+	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/hooks"
+	"github.com/tsingmaoai/xw-cli/internal/logger"
+	"github.com/tsingmaoai/xw-cli/internal/models"
+	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
 // StartModel handles requests to start a model instance
