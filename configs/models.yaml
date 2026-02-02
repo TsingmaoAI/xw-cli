@@ -21,9 +21,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-      ascend-310p:
-        - vllm:docker
-        - mindie:docker
     
     tag: main
     capabilities:
@@ -40,10 +37,6 @@ models:
     # Deployment configuration (device -> engines mapping)
     supported_devices:
       ascend-910b:
-        - vllm:docker
-        - mindie:docker
-        - mlguider:docker
-      ascend-310p:
         - vllm:docker
         - mindie:docker
     
@@ -70,11 +63,271 @@ models:
   # Qwen2.5 7B Instruct
   - model_id: qwen2.5-7b-instruct
     source_id: qwen/Qwen2.5-7B-Instruct
-    
+
     # Model specifications
     parameters: 7.6
     context_length: 131072
-    
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+
+    capabilities:
+      - completion
+
+  # Qwen3 32B
+  - model_id: qwen3-32b
+    source_id: Qwen/Qwen3-32B
+
+    # Model specifications
+    parameters: 32.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  - model_id: qwen3-8b
+    source_id: Qwen/Qwen3-8B
+
+    # Model specifications
+    parameters: 8.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # Qwen3-235B-A22B W8A8
+  - model_id: qwen3-235b-a22b-w8a8
+    source_id: metax-tech/Qwen3-235B-A22B.w8a8
+
+    # Model specifications
+    parameters: 235.0
+    context_length: 40960
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      metax-c550:
+        - vllm:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+
+  # GLM OCR
+  - model_id: glm-ocr
+    source_id: tsingmao-intelligence/GLM-OCR.ascend
+
+    # Model specifications
+    parameters: 10.0
+    context_length: 66000
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-310p:
+        - mlguider:docker
+
+    capabilities:
+      - completion
+      - vision
+
+  # MiniMax M2.1 W4A8
+  - model_id: minimax-m2.1-w4a8
+    source_id: tsingmao-intelligence/MiniMax-M2.1.w4a8.ascend
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: w4a8
+    capabilities:
+      - completion
+
+  # GLM-4.7 W8A8 (Metax)
+  - model_id: glm-4.7-w8a8
+    source_id: metax-tech/GLM-4.7-W8A8
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      metax-c550:
+        - vllm:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+
+  # DeepSeek OCR
+  - model_id: deepseek-ocr
+    source_id: deepseek-ai/DeepSeek-OCR
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 32768
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+      - vision
+
+  # Qwen3-235B-A22B W4A8
+  - model_id: qwen3-235b-a22b-w4a8
+    source_id: vllm-ascend/Qwen3-235B-A22B-W4A8
+
+    # Model specifications
+    parameters: 235.0
+    context_length: 40960
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: w4a8
+    capabilities:
+      - completion
+
+  # Qwen3-Next-80B-A3B Instruct W8A8
+  - model_id: qwen3-next-80b-a3b-instruct-w8a8
+    source_id: vllm-ascend/Qwen3-Next-80B-A3B-Instruct-W8A8
+
+    # Model specifications
+    parameters: 80.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+
+  # Qwen3-32B W8A8
+  - model_id: qwen3-32b-w8a8
+    source_id: vllm-ascend/Qwen3-32B-W8A8
+
+    # Model specifications
+    parameters: 32.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+
+  # Qwen3-30B-A3B Instruct 2507 W4A8
+  - model_id: qwen3-30b-a3b-instruct-2507-w4a8
+    source_id: vllm-ascend/Qwen3-30B-A3B-Instruct-2507-quantized.w4a8
+
+    # Model specifications
+    parameters: 30.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+
+    tag: w4a8
+    capabilities:
+      - completion
+
+  # GLM-4.5 W8A8 (Ascend)
+  - model_id: glm-4.5-w8a8
+    source_id: tsingmao-intelligence/GLM4.5.w8a8.ascend
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+      metax-c550:
+        - vllm:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+
+  # Qwen3-VL-30B-A3B Instruct
+  - model_id: qwen3-vl-30b-a3b-instruct
+    source_id: Qwen/Qwen3-VL-30B-A3B-Instruct
+
+    # Model specifications
+    parameters: 30.0
+    context_length: 32768
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+      - vision
+
+  # Qwen2.5-14B Instruct
+  - model_id: qwen2.5-14b-instruct
+    source_id: Qwen/Qwen2.5-14B-Instruct
+
+    # Model specifications
+    parameters: 14.0
+    context_length: 131072
+
     # Deployment configuration (device -> engines mapping)
     supported_devices:
       ascend-910b:
@@ -84,7 +337,178 @@ models:
       ascend-310p:
         - vllm:docker
         - mindie:docker
-    
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # Qwen2.5-72B Instruct
+  - model_id: qwen2.5-72b-instruct
+    source_id: Qwen/Qwen2.5-72B-Instruct
+
+    # Model specifications
+    parameters: 72.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # QwQ-32B
+  - model_id: qwq-32b
+    source_id: Qwen/QwQ-32B
+
+    # Model specifications
+    parameters: 32.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # Qwen2.5-VL-7B Instruct
+  - model_id: qwen2.5-vl-7b-instruct
+    source_id: Qwen/Qwen2.5-VL-7B-Instruct
+
+    # Model specifications
+    parameters: 7.0
+    context_length: 32768
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+      - vision
+
+  # Qwen3-VL-8B Instruct
+  - model_id: qwen3-vl-8b-instruct
+    source_id: Qwen/Qwen3-VL-8B-Instruct
+
+    # Model specifications
+    parameters: 8.0
+    context_length: 32768
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+      - vision
+
+  # DeepSeek-R1 Distill Qwen 7B
+  - model_id: deepseek-r1-distill-qwen-7b
+    source_id: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+
+    # Model specifications
+    parameters: 7.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # DeepSeek-R1 Distill Llama 70B
+  - model_id: deepseek-r1-distill-llama-70b
+    source_id: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+
+    # Model specifications
+    parameters: 70.0
+    context_length: 32768
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
+    capabilities:
+      - completion
+
+  # DeepSeek-R1 Distill Qwen 32B
+  - model_id: deepseek-r1-distill-qwen-32b
+    source_id: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+
+    # Model specifications
+    parameters: 32.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
+
     capabilities:
       - completion
 

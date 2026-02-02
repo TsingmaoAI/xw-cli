@@ -21,11 +21,976 @@ version: "1.0"
 
 templates:
   # Example: Ascend 910B with Qwen2 72B using MLGuider
-  # - name: ascend-910b_qwen2-72b_mlguider
+  - name: ascend-910b_qwen2-72b_mlguider
+    params:
+      - max_batch_size=128
+      - tensor_parallel=4
+      - max_seq_len=4096
+
+  # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
+  - name: ascend-910b_qwen2.5-7b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=8192
+      - tensor_parallel_size=1
+      - extra_args=
+
+  # Ascend 910B - Qwen2.5-7B Instruct mindie
+  - name: ascend-910b_qwen2.5-7b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-7b-instruct
+
+  # Ascend 910B - Qwen2-0.5B
+  - name: ascend-910b_qwen2-0.5b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2-0.5b
+      - extra_args=
+
+  - name: ascend-910b_qwen2-0.5b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2-0.5b
+
+  # Ascend 910B - Qwen2-7B
+  - name: ascend-910b_qwen2-7b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2-7b
+      - extra_args=
+
+  - name: ascend-910b_qwen2-7b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2-7b
+
+  # Ascend 910B - Qwen2-72B
+  - name: ascend-910b_qwen2-72b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2-72b
+      - extra_args=
+
+  - name: ascend-910b_qwen2-72b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2-72b
+
+  # Ascend 910B - Qwen3-32B
+  - name: ascend-910b_qwen3-32b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b
+      - extra_args=
+
+  - name: ascend-910b_qwen3-32b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b
+
+  # Ascend 910B - Qwen3-8B
+  - name: ascend-910b_qwen3-8b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+      - extra_args=
+
+  - name: ascend-910b_qwen3-8b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+
+  # Ascend 910B - MiniMax-M2.1 W4A8
+  - name: ascend-910b_minimax-m2.1-w4a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=minimax-m2.1-w4a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-235B-A22B W4A8
+  - name: ascend-910b_qwen3-235b-a22b-w4a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=40960
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-235b-a22b-w4a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-Next-80B-A3B Instruct W8A8
+  - name: ascend-910b_qwen3-next-80b-a3b-instruct-w8a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-next-80b-a3b-instruct-w8a8
+      - extra_args=--quantization ascend
+
+  - name: ascend-910b_qwen3-next-80b-a3b-instruct-w8a8_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-next-80b-a3b-instruct-w8a8
+
+  # Ascend 910B - Qwen3-32B W8A8
+  - name: ascend-910b_qwen3-32b-w8a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b-w8a8
+      - extra_args=--quantization ascend
+
+  - name: ascend-910b_qwen3-32b-w8a8_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b-w8a8
+
+  # Ascend 910B - Qwen3-30B-A3B Instruct 2507 W4A8
+  - name: ascend-910b_qwen3-30b-a3b-instruct-2507-w4a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-30b-a3b-instruct-2507-w4a8
+      - extra_args=--quantization ascend
+
+  - name: ascend-910b_qwen3-30b-a3b-instruct-2507-w4a8_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-30b-a3b-instruct-2507-w4a8
+
+  # Ascend 910B - GLM-4.5 W8A8
+  - name: ascend-910b_glm-4.5-w8a8_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=glm-4.5-w8a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-VL-30B-A3B Instruct
+  - name: ascend-910b_qwen3-vl-30b-a3b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-vl-30b-a3b-instruct
+      - extra_args=
+
+  - name: ascend-910b_qwen3-vl-30b-a3b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-vl-30b-a3b-instruct
+
+  # Ascend 910B - Qwen2.5-14B Instruct
+  - name: ascend-910b_qwen2.5-14b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+      - extra_args=
+
+  - name: ascend-910b_qwen2.5-14b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+
+  - name: ascend-910b_qwen2.5-14b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+
+  # Ascend 910B - Qwen2.5-72B Instruct
+  - name: ascend-910b_qwen2.5-72b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+      - extra_args=
+
+  - name: ascend-910b_qwen2.5-72b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+
+  - name: ascend-910b_qwen2.5-72b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+
+  # Ascend 910B - QwQ-32B
+  - name: ascend-910b_qwq-32b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+      - extra_args=
+
+  - name: ascend-910b_qwq-32b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+
+  - name: ascend-910b_qwq-32b_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+
+  # Ascend 910B - Qwen2.5-VL-7B Instruct
+  - name: ascend-910b_qwen2.5-vl-7b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+      - extra_args=
+
+  - name: ascend-910b_qwen2.5-vl-7b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+
+  - name: ascend-910b_qwen2.5-vl-7b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+
+  # Ascend 910B - Qwen3-VL-8B Instruct
+  - name: ascend-910b_qwen3-vl-8b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+      - extra_args=
+
+  - name: ascend-910b_qwen3-vl-8b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+
+  - name: ascend-910b_qwen3-vl-8b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+
+  # Ascend 910B - DeepSeek-R1 Distill Qwen 7B
+  - name: ascend-910b_deepseek-r1-distill-qwen-7b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+      - extra_args=
+
+  - name: ascend-910b_deepseek-r1-distill-qwen-7b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+
+  - name: ascend-910b_deepseek-r1-distill-qwen-7b_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+
+  # Ascend 910B - DeepSeek-R1 Distill Llama 70B
+  - name: ascend-910b_deepseek-r1-distill-llama-70b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+      - extra_args=
+
+  - name: ascend-910b_deepseek-r1-distill-llama-70b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+
+  - name: ascend-910b_deepseek-r1-distill-llama-70b_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+
+  # Ascend 910B - DeepSeek-R1 Distill Qwen 32B
+  - name: ascend-910b_deepseek-r1-distill-qwen-32b_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+      - extra_args=
+
+  - name: ascend-910b_deepseek-r1-distill-qwen-32b_mindie
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+
+  - name: ascend-910b_deepseek-r1-distill-qwen-32b_mlguider
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+
+  # Example: Ascend 910B with Qwen3 32B using vLLM
+  - name: ascend-310p_qwen3-32b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=8192
+      - world_size=4
+      - server_port=8000
+      - custom_args=" --xxx --yyy"
+
+  - name: ascend-310p_qwen3-32b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=8192
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+
+  - name: ascend-310p_glm-ocr_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=66000
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+
+  # Ascend 310P - Qwen3-32B mlguider
+  - name: ascend-310p_qwen3-32b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=8192
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b
+
+  # Ascend 310P - Qwen3-8B
+  - name: ascend-310p_qwen3-8b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+
+  - name: ascend-310p_qwen3-8b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+
+  - name: ascend-310p_qwen3-8b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+
+
+  # Ascend 310P - Qwen3-VL-30B-A3B Instruct
+  - name: ascend-310p_qwen3-vl-30b-a3b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-vl-30b-a3b-instruct
+
+  - name: ascend-310p_qwen3-vl-30b-a3b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-vl-30b-a3b-instruct
+
+
+  # Ascend 310P - Qwen2.5-14B Instruct
+  - name: ascend-310p_qwen2.5-14b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+
+  - name: ascend-310p_qwen2.5-14b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+
+  - name: ascend-310p_qwen2.5-14b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+
+  # Ascend 310P - Qwen2.5-72B Instruct
+  - name: ascend-310p_qwen2.5-72b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+
+  - name: ascend-310p_qwen2.5-72b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+
+  - name: ascend-310p_qwen2.5-72b-instruct_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+
+  # Ascend 310P - QwQ-32B
+  - name: ascend-310p_qwq-32b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+
+  - name: ascend-310p_qwq-32b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+
+  - name: ascend-310p_qwq-32b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+
+  # Ascend 310P - Qwen2.5-VL-7B Instruct
+  - name: ascend-310p_qwen2.5-vl-7b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+
+  - name: ascend-310p_qwen2.5-vl-7b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+
+
+  # Ascend 310P - Qwen3-VL-8B Instruct
+  - name: ascend-310p_qwen3-vl-8b-instruct_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+
+  - name: ascend-310p_qwen3-vl-8b-instruct_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+
+
+  # Ascend 310P - DeepSeek-R1 Distill Qwen 7B
+  - name: ascend-310p_deepseek-r1-distill-qwen-7b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+
+  - name: ascend-310p_deepseek-r1-distill-qwen-7b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+
+  - name: ascend-310p_deepseek-r1-distill-qwen-7b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+
+  # Ascend 310P - DeepSeek-R1 Distill Llama 70B
+  - name: ascend-310p_deepseek-r1-distill-llama-70b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+
+  - name: ascend-310p_deepseek-r1-distill-llama-70b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+
+  - name: ascend-310p_deepseek-r1-distill-llama-70b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+
+  # Ascend 310P - DeepSeek-R1 Distill Qwen 32B
+  - name: ascend-310p_deepseek-r1-distill-qwen-32b_vllm
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+
+  - name: ascend-310p_deepseek-r1-distill-qwen-32b_mindie
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+
+  - name: ascend-310p_deepseek-r1-distill-qwen-32b_mlguider
+    params:
+      - gpu_memory_utilization=0.8
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+
+  # Example: Ascend 310P with Qwen2.5 7B using vLLM
+  # - name: ascend-310p_qwen2.5-7b-instruct_vllm
   #   params:
-  #     - max_batch_size=128
-  #     - tensor_parallel=4
-  #     - max_seq_len=4096
+  #     - world_size=1
+  #     - device_id=0
+  #     - precision=fp16
+
+  # 沐曦 C550 (metax-c550) - vLLM 模板（与 models.yaml 中 supported_devices.metax-c550 对应）
+
+  # Metax C550 with GLM-4.7 W8A8 using vLLM（与 xw 注入的 8 卡一致，避免 WORLD_SIZE=8 与 tensor_parallel_size=1 冲突）
+  - name: metax-c550_glm-4.7-w8a8_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=8192
+      - tensor_parallel_size=8
+      - gpu_memory_utilization=0.9
+      - world_size=8
+      - server_port=8000
+      - model_name=glm-4.7-w8a8
+
+
+  # 沐曦 C550 - Qwen3-32B
+  - name: metax-c550_qwen3-32b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen3-8B
+  - name: metax-c550_qwen3-8b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+      - gpu_memory_utilization=0.9
+
+  # Metax C550 with Qwen3-235B-A22B W8A8 using vLLM
+  - name: metax-c550_qwen3-235b-a22b-w8a8_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=40960
+      - tensor_parallel_size=1
+      - gpu_memory_utilization=0.9
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-235b-a22b
+
+
+  # 沐曦 C550 - DeepSeek OCR
+  - name: metax-c550_deepseek-ocr_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-ocr
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - GLM-4.5 W8A8
+  - name: metax-c550_glm-4.5-w8a8_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=glm-4.5-w8a8
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen2.5-14B Instruct
+  - name: metax-c550_qwen2.5-14b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=2
+      - world_size=2
+      - server_port=8000
+      - model_name=qwen2.5-14b-instruct
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen2.5-72B Instruct
+  - name: metax-c550_qwen2.5-72b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen2.5-72b-instruct
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - QwQ-32B
+  - name: metax-c550_qwq-32b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwq-32b
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen2.5-VL-7B Instruct
+  - name: metax-c550_qwen2.5-vl-7b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen2.5-vl-7b-instruct
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen3-VL-8B Instruct
+  - name: metax-c550_qwen3-vl-8b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-vl-8b-instruct
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - DeepSeek-R1 Distill Qwen 7B
+  - name: metax-c550_deepseek-r1-distill-qwen-7b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-7b
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - DeepSeek-R1 Distill Llama 70B
+  - name: metax-c550_deepseek-r1-distill-llama-70b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek-r1-distill-llama-70b
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - DeepSeek-R1 Distill Qwen 32B
+  - name: metax-c550_deepseek-r1-distill-qwen-32b_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=deepseek-r1-distill-qwen-32b
+      - gpu_memory_utilization=0.9
+
+  # 以下模板在 models.yaml 中 metax-c550 暂无对应 model_id，保留供后续机型或模型接入使用
+  # Metax C550 with Qwen3-30B-A3B W8A8 using vLLM（models 中无 qwen3-30b-a3b-w8a8 支持 c550）
+  - name: metax-c550_qwen3-30b-a3b-w8a8_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=4096
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-30b-a3b
+      - gpu_memory_utilization=0.9
+
+  # Metax C550 with Qwen3-Next-80B-A3B-Instruct W8A8（models 中该模型仅支持 ascend-910b）
+  - name: metax-c550_qwen3-next-80b-a3b-instruct-w8a8_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=262144
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-next-80b-a3b-instruct
+      - gpu_memory_utilization=0.9
+
+  # Metax C550 with Qwen3-Coder-30B-A3B-Instruct（models 中无此 model_id，保留供后续接入）
+  - name: metax-c550_qwen3-coder-30b-a3b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=262144
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-coder-30b-a3b-instruct
+      - gpu_memory_utilization=0.9
+
+  # 沐曦 C550 - Qwen3-VL-30B-A3B Instruct
+  - name: metax-c550_qwen3-vl-30b-a3b-instruct_vllm
+    params:
+      - vllm_use_v1=0
+      - max_model_len=262144
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-vl-30b-a3b-instruct
+      - gpu_memory_utilization=0.9
 
   # # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
   # - name: ascend-910b_qwen2.5-7b-instruct_vllm

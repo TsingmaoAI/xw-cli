@@ -20,7 +20,7 @@ vendors:
         generation: Ascend 9xx
         runtime_images:
           vllm:
-            arm64: harbor.tsingmao.com/public/vllm-ascend:v0.14.0rc1-arm64
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.14.0rc1-arm64            
             amd64: NONE
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
@@ -45,6 +45,26 @@ vendors:
             arm64: harbor.tsingmao.com/xw-cli/mlguider:0123-310p-arm64
             amd64: NONE
 
+  - vendor_name: Metax
+    vendor_id: "0x9999"
+
+    chip_models:
+      # Metax C550
+      - config_key: metax-c550
+        model_name: Metax C550
+        device_id: "0x4000"
+        generation: Metax C5xx
+        runtime_images:
+          vllm:
+            arm64: NONE
+            amd64: harbor.tsingmao.com/xw-cli/vllm-metax:0.12.0-maca.torch2.8-py310-ubuntu22.04-amd64
+          mindie:
+            arm64: NONE
+            amd64: NONE
+          mlguider:
+            arm64: NONE
+            amd64: NONE
+    
 # Notes:
 # - config_key: Unique identifier used in runtime configuration and model definitions
 # - vendor_id and device_id: PCIe identification (16-bit hex values, get via: lspci -nn)
