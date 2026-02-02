@@ -200,6 +200,9 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		logger.Debug("Set WORLD_SIZE=%d", params.WorldSize)
 	}
 	
+	// MODEL_PATH: Container-internal path where model files are mounted
+	env["MODEL_PATH"] = "/mnt/model"
+	
 	// MODEL_NAME: Model name used for inference requests
 	// Use instance alias if set, otherwise use model ID
 	modelName := params.Alias
