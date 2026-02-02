@@ -11,17 +11,6 @@ import (
 type BackendType = api.BackendType
 type DeploymentMode = api.DeploymentMode
 
-// PreCreateHook is called by runtime implementations before creating containers/instances.
-// This allows the Manager to execute operations like pulling Docker images.
-//
-// Parameters:
-//   - ctx: Context for cancellation
-//   - imageName: Docker image name to be used (can be empty for non-Docker runtimes)
-//
-// Returns:
-//   - error if the hook fails (instance creation should be aborted)
-type PreCreateHook func(ctx context.Context, imageName string) error
-
 // Runtime defines the interface for model runtime backends.
 type Runtime interface {
 	Create(ctx context.Context, params *CreateParams) (*Instance, error)
@@ -58,10 +47,6 @@ type CreateParams struct {
 	TensorParallel   int // Number of devices for tensor parallelism
 	PipelineParallel int // Number of devices for pipeline parallelism (default: 1)
 	WorldSize        int // Total number of devices (TENSOR_PARALLEL * PIPELINE_PARALLEL)
-	
-	// OnPreCreate is called by runtime before creating the instance
-	// This allows Manager to execute operations like pulling Docker images
-	OnPreCreate      PreCreateHook
 	
 	// EventChannel for sending progress messages to client (optional, for SSE streams)
 	EventChannel     chan<- string

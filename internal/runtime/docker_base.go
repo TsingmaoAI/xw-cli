@@ -5,10 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os/exec"
 	runtimePkg "runtime"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -978,6 +981,272 @@ func getSystemArch() (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported architecture: %s", runtimePkg.GOARCH)
 	}
+}
+
+// CheckDockerImageExists checks if a Docker image exists locally using docker CLI.
+//
+// This function queries Docker to determine if an image is available in the local
+// Docker image cache. It uses the docker CLI command for simplicity and compatibility.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - imageName: Full image name (e.g., "ubuntu:20.04", "quay.io/ascend/vllm-ascend:v0.11.0rc0")
+//
+// Returns:
+//   - true if image exists locally
+//   - Error if Docker query fails
+//
+// Thread Safety: Safe for concurrent calls
+func CheckDockerImageExists(ctx context.Context, imageName string) (bool, error) {
+	if imageName == "" {
+		return false, fmt.Errorf("image name cannot be empty")
+	}
+	
+	logger.Debug("Checking if Docker image exists: %s", imageName)
+	
+	cmd := exec.CommandContext(ctx, "docker", "images", "-q", imageName)
+	output, err := cmd.Output()
+	
+	if err != nil {
+		if ctx.Err() != nil {
+			return false, fmt.Errorf("operation cancelled")
+		}
+		return false, fmt.Errorf("failed to check Docker image: %w", err)
+	}
+	
+	exists := len(strings.TrimSpace(string(output))) > 0
+	if exists {
+		logger.Debug("Docker image found locally: %s", imageName)
+	} else {
+		logger.Debug("Docker image not found locally: %s", imageName)
+	}
+	
+	return exists, nil
+}
+
+// PullDockerImage pulls a Docker image from registry using docker CLI with PTY.
+//
+// This function pulls an image from the configured registry (or Docker Hub by default).
+// The pull operation shows progress through an optional event channel.
+//
+// Progress Events:
+//   - "DOCKER_CR|..." - Carriage return update (overwrite current line)
+//   - "DOCKER_LF|..." - Line feed update (new line)
+//   - Regular messages for status updates
+//
+// The function uses PTY to capture Docker's native progress bars and formatting.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - imageName: Full image name to pull
+//   - eventCh: Optional channel for progress events (can be nil)
+//
+// Returns:
+//   - nil on success
+//   - Error if pull fails or is cancelled
+//
+// Thread Safety: Safe for concurrent calls
+func PullDockerImage(ctx context.Context, imageName string, eventCh chan<- string) error {
+	if imageName == "" {
+		return fmt.Errorf("image name cannot be empty")
+	}
+	
+	logger.Info("Pulling Docker image: %s", imageName)
+	sendEvent := func(msg string) {
+		if eventCh != nil {
+			select {
+			case eventCh <- msg:
+			default:
+				// Channel full or closed, skip
+			}
+		}
+	}
+	
+	sendEvent(fmt.Sprintf("Pulling Docker image: %s", imageName))
+	
+	cmd := exec.CommandContext(ctx, "docker", "pull", imageName)
+	
+	// Use PTY to capture native Docker progress bars
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to start docker pull with pty: %w", err)
+	}
+	defer ptmx.Close()
+	
+	// Read byte by byte to detect \r and \n separately
+	var line []byte
+	buf := make([]byte, 1)
+	
+	// Set read deadline to check context periodically
+	ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	
+	for {
+		// Check if context is cancelled
+		select {
+		case <-ctx.Done():
+			// Context cancelled, kill the process
+			if cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+			return fmt.Errorf("pull operation cancelled")
+		default:
+		}
+		
+		n, err := ptmx.Read(buf)
+		if n > 0 {
+			ch := buf[0]
+			
+			if ch == '\r' {
+				// Carriage return - check if next char is \n (CRLF sequence)
+				if len(line) > 0 {
+					// Peek at next byte
+					next := make([]byte, 1)
+					ptmx.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+					nn, _ := ptmx.Read(next)
+					ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+					
+					if nn > 0 && next[0] == '\n' {
+						// CRLF sequence - treat as newline
+						sendEvent("DOCKER_LF|" + string(line))
+					} else {
+						// Just CR - overwrite current line
+						sendEvent("DOCKER_CR|" + string(line))
+						// Put back the peeked byte if it's not \n
+						if nn > 0 {
+							line = append(line[:0], next[0])
+							continue
+						}
+					}
+					line = line[:0]
+				}
+			} else if ch == '\n' {
+				// Line feed - send line with LF marker (for new line)
+				if len(line) > 0 {
+					sendEvent("DOCKER_LF|" + string(line))
+					line = line[:0]
+				}
+			} else {
+				line = append(line, ch)
+			}
+			
+			// Reset deadline after successful read
+			ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		}
+		
+		if err == io.EOF {
+			if len(line) > 0 {
+				sendEvent("DOCKER_LF|" + string(line))
+			}
+			break
+		}
+		if err != nil {
+			// Check if it's a timeout error (expected for context checking)
+			if netErr, ok := err.(interface{ Timeout() bool }); ok && netErr.Timeout() {
+				// Timeout is expected, continue to next iteration
+				ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				continue
+			}
+			
+			// Other errors might be due to PTY closing when process ends
+			// Check if process has exited
+			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+				// Process already exited, PTY closed naturally
+				break
+			}
+			
+			// If context was cancelled, this is expected
+			if ctx.Err() != nil {
+				break
+			}
+			
+			// Real error - but could also be PTY closing, so just break
+			// and let cmd.Wait() determine if there was an actual error
+			break
+		}
+	}
+	
+	if err := cmd.Wait(); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("pull operation cancelled")
+		}
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+	
+	sendEvent(fmt.Sprintf("Successfully pulled image: %s", imageName))
+	logger.Info("Successfully pulled Docker image: %s", imageName)
+	
+	return nil
+}
+
+// EnsureImage checks if an image exists locally and pulls it if not.
+//
+// This method combines CheckDockerImageExists and PullDockerImage to ensure
+// a Docker image is available before creating containers. It's designed to be
+// called by concrete runtime implementations (vllm-docker, mindie-docker) in
+// their Create methods.
+//
+// The method sends progress events through the CreateParams.EventChannel:
+//   - Checking image availability
+//   - Image found/not found status
+//   - Pull progress (if needed)
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - imageName: Full image name to ensure
+//   - params: CreateParams containing EventChannel for progress updates
+//
+// Returns:
+//   - nil if image is available (either found or pulled successfully)
+//   - Error if check fails or pull fails
+//
+// Thread Safety: Safe for concurrent calls
+//
+// Example:
+//   if err := r.EnsureImage(ctx, imageName, params); err != nil {
+//       return nil, fmt.Errorf("failed to ensure image: %w", err)
+//   }
+func (b *DockerRuntimeBase) EnsureImage(ctx context.Context, imageName string, params *CreateParams) error {
+	if imageName == "" {
+		return nil // Skip if no image name provided
+	}
+	
+	// Get event channel from params
+	var eventCh chan<- string
+	if params != nil {
+		eventCh = params.EventChannel
+	}
+	
+	sendEvent := func(msg string) {
+		if eventCh != nil {
+			select {
+			case eventCh <- msg:
+			default:
+				// Channel full or closed, skip
+			}
+		}
+	}
+	
+	sendEvent("Checking Docker image availability...")
+	logger.Debug("Ensuring Docker image is available: %s", imageName)
+	
+	// Check if image exists locally
+	exists, err := CheckDockerImageExists(ctx, imageName)
+	if err != nil {
+		return fmt.Errorf("failed to check Docker image: %w", err)
+	}
+	
+	if exists {
+		sendEvent(fmt.Sprintf("Docker image %s found locally", imageName))
+		logger.Debug("Docker image %s already exists locally", imageName)
+		return nil
+	}
+	
+	// Image doesn't exist, pull it
+	if err := PullDockerImage(ctx, imageName, eventCh); err != nil {
+		return fmt.Errorf("failed to pull Docker image: %w", err)
+	}
+	
+	return nil
 }
 
 // ApplyTemplateParams applies template parameters from CreateParams to the environment map.

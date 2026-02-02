@@ -8,14 +8,11 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"io"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	
-	"github.com/creack/pty"
 	"github.com/tsingmao/xw/internal/api"
 	"github.com/tsingmao/xw/internal/config"
 	"github.com/tsingmao/xw/internal/device"
@@ -33,7 +30,6 @@ type Manager struct {
 	stopCh             chan struct{}
 	wg                 sync.WaitGroup
 	serverName         string // Server unique identifier for multi-server support
-	currentEventCh     chan<- string // Temporary event channel for current operation
 }
 
 // NewManager creates a new runtime manager with the given server name.
@@ -60,193 +56,6 @@ func (m *Manager) GetServerName() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.serverName
-}
-
-// onPreCreateInstance is called by runtimes before creating instances.
-// It handles operations like pulling Docker images if they don't exist locally.
-//
-// Parameters:
-//   - ctx: Context for cancellation
-//   - imageName: Docker image name (empty for non-Docker runtimes)
-//
-// Returns:
-//   - error if any operation fails
-func (m *Manager) onPreCreateInstance(ctx context.Context, imageName string) error {
-	// Skip if no image name provided (non-Docker runtimes)
-	if imageName == "" {
-		return nil
-	}
-	
-	m.sendEvent("Checking Docker image availability...")
-	logger.Debug("Pre-create hook: checking Docker image %s", imageName)
-	
-	// Check if image exists locally
-	exists, err := m.checkDockerImage(ctx, imageName)
-	if err != nil {
-		return fmt.Errorf("failed to check Docker image: %w", err)
-	}
-	
-	if exists {
-		m.sendEvent(fmt.Sprintf("Docker image %s found locally", imageName))
-		logger.Debug("Docker image %s already exists locally", imageName)
-		return nil
-	}
-	
-	// Image doesn't exist, pull it
-	m.sendEvent(fmt.Sprintf("Pulling Docker image: %s", imageName))
-	logger.Info("Docker image %s not found locally, pulling...", imageName)
-	
-	if err := m.pullDockerImage(ctx, imageName); err != nil {
-		return fmt.Errorf("failed to pull Docker image: %w", err)
-	}
-	
-	m.sendEvent(fmt.Sprintf("Successfully pulled image: %s", imageName))
-	logger.Info("Successfully pulled Docker image: %s", imageName)
-	return nil
-}
-
-// checkDockerImage checks if a Docker image exists locally.
-func (m *Manager) checkDockerImage(ctx context.Context, imageName string) (bool, error) {
-	cmd := exec.CommandContext(ctx, "docker", "images", "-q", imageName)
-	output, err := cmd.Output()
-	
-	if err != nil {
-		if ctx.Err() != nil {
-			return false, fmt.Errorf("operation cancelled")
-		}
-		return false, fmt.Errorf("failed to check Docker image: %w", err)
-	}
-	
-	exists := len(strings.TrimSpace(string(output))) > 0
-	return exists, nil
-}
-
-// pullDockerImage pulls a Docker image from registry using PTY for native output.
-func (m *Manager) pullDockerImage(ctx context.Context, imageName string) error {
-	cmd := exec.CommandContext(ctx, "docker", "pull", imageName)
-	
-	// Use PTY to capture native Docker progress bars
-	ptmx, err := pty.Start(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to start with pty: %w", err)
-	}
-	defer ptmx.Close()
-	
-	// Read byte by byte to detect \r and \n separately
-	var line []byte
-	buf := make([]byte, 1)
-	
-	// Set read deadline to check context periodically
-	ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	
-	for {
-		// Check if context is cancelled
-		select {
-		case <-ctx.Done():
-			// Context cancelled, kill the process
-			if cmd.Process != nil {
-				cmd.Process.Kill()
-			}
-			return fmt.Errorf("operation cancelled")
-		default:
-		}
-		
-		n, err := ptmx.Read(buf)
-		if n > 0 {
-			ch := buf[0]
-			
-			if ch == '\r' {
-				// Carriage return - check if next char is \n (CRLF sequence)
-				if len(line) > 0 {
-					// Peek at next byte
-					next := make([]byte, 1)
-					ptmx.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
-					nn, _ := ptmx.Read(next)
-					ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-					
-					if nn > 0 && next[0] == '\n' {
-						// CRLF sequence - treat as newline
-						m.sendEvent("DOCKER_LF|" + string(line))
-					} else {
-						// Just CR - overwrite current line
-						m.sendEvent("DOCKER_CR|" + string(line))
-						// Put back the peeked byte if it's not \n
-						if nn > 0 {
-							line = append(line[:0], next[0])
-							continue
-						}
-					}
-					line = line[:0]
-				}
-			} else if ch == '\n' {
-				// Line feed - send line with LF marker (for new line)
-				if len(line) > 0 {
-					m.sendEvent("DOCKER_LF|" + string(line))
-					line = line[:0]
-				}
-			} else {
-				line = append(line, ch)
-			}
-			
-			// Reset deadline after successful read
-			ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-		}
-		
-		if err == io.EOF {
-			if len(line) > 0 {
-				m.sendEvent("DOCKER_LF|" + string(line))
-			}
-			break
-		}
-		if err != nil {
-			// Check if it's a timeout error (expected for context checking)
-			if netErr, ok := err.(interface{ Timeout() bool }); ok && netErr.Timeout() {
-				// Timeout is expected, continue to next iteration
-				ptmx.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-				continue
-			}
-			
-			// Other errors might be due to PTY closing when process ends
-			// Check if process has exited
-			if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
-				// Process already exited, PTY closed naturally
-				break
-			}
-			
-			// If context was cancelled, this is expected
-			if ctx.Err() != nil {
-				break
-			}
-			
-			// Real error - but could also be PTY closing, so just break
-			// and let cmd.Wait() determine if there was an actual error
-			break
-		}
-	}
-	
-	if err := cmd.Wait(); err != nil {
-		if ctx.Err() != nil {
-			return fmt.Errorf("operation cancelled")
-		}
-		return fmt.Errorf("failed to pull image: %w", err)
-	}
-	
-	return nil
-}
-
-// sendEvent sends an event message to the current event channel if available.
-func (m *Manager) sendEvent(message string) {
-	m.mu.RLock()
-	eventCh := m.currentEventCh
-	m.mu.RUnlock()
-	
-	if eventCh != nil {
-		select {
-		case eventCh <- message:
-		default:
-			// Channel full or closed, skip
-		}
-	}
 }
 
 // SetServerName sets the server name (used during initialization)
@@ -464,23 +273,9 @@ func (m *Manager) Create(ctx context.Context, runtimeName string, params *Create
 		logger.Debug("Passing %d template parameter(s) to runtime implementation", len(params.TemplateParams))
 	}
 	
-	// Store event channel temporarily for hook to use
-	m.mu.Lock()
-	m.currentEventCh = params.EventChannel
-	m.mu.Unlock()
-	
-	// Set pre-create hook for runtime to call before creating instance
-	// This allows manager to perform operations like pulling Docker images
-	params.OnPreCreate = m.onPreCreateInstance
-	
-	result, err := rt.Create(ctx, params)
-	
-	// Clear event channel after creation
-	m.mu.Lock()
-	m.currentEventCh = nil
-	m.mu.Unlock()
-	
-	return result, err
+	// Create the instance via runtime implementation
+	// Docker runtimes will handle image pulling internally via EnsureImage
+	return rt.Create(ctx, params)
 }
 	
 // Start starts an instance.

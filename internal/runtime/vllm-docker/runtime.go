@@ -241,11 +241,9 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		logger.Info("Using configured Docker image: %s", imageName)
 	}
 	
-	// Call pre-create hook to check/pull Docker image
-	if params.OnPreCreate != nil {
-		if err := params.OnPreCreate(ctx, imageName); err != nil {
-			return nil, fmt.Errorf("pre-create hook failed: %w", err)
-		}
+	// Ensure Docker image is available (check and pull if needed)
+	if err := r.EnsureImage(ctx, imageName, params); err != nil {
+		return nil, fmt.Errorf("failed to ensure Docker image: %w", err)
 	}
 	
 	// Determine vLLM command to execute

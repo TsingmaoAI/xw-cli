@@ -13,8 +13,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Installation mode
-SYSTEM_INSTALL=false
+# Installation mode (default to system install)
+SYSTEM_INSTALL=true
 
 # Installation directories (will be set based on mode)
 INSTALL_DIR=""
@@ -47,24 +47,25 @@ Usage: $0 [OPTIONS]
 Install xw - AI Inference on Domestic Chips
 
 OPTIONS:
-    --system        Install as system service (requires root)
-                    Binary: /usr/local/bin
-                    Config: /etc/xw
-                    Data: /var/lib/xw
-                    
-    (no options)    Install for current user
+    --user          Install for current user only (no root required)
                     Binary: ~/.local/bin
                     Config: ~/.xw
                     Data: ~/.xw/data
+                    
+    (no options)    System installation (requires root)
+                    Binary: /usr/local/bin
+                    Config: /etc/xw
+                    Data: /var/lib/xw
+                    Systemd service: enabled
     
     -h, --help      Show this help message
 
 EXAMPLES:
-    # User installation
-    bash scripts/install.sh
+    # System installation (default, requires root)
+    sudo bash scripts/install.sh
     
-    # System installation
-    sudo bash scripts/install.sh --system
+    # User installation
+    bash scripts/install.sh --user
 
 EOF
 }
@@ -73,8 +74,8 @@ EOF
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --system)
-                SYSTEM_INSTALL=true
+            --user)
+                SYSTEM_INSTALL=false
                 shift
                 ;;
             -h|--help)
@@ -94,13 +95,14 @@ parse_args() {
 check_root() {
     if [ "$SYSTEM_INSTALL" = true ] && [ "$EUID" -ne 0 ]; then
         print_error "System installation requires root privileges"
-        echo "Please run: sudo $0 --system"
+        echo "Please run: sudo $0"
+        echo "Or use --user flag for user installation: $0 --user"
         exit 1
     fi
     
     if [ "$SYSTEM_INSTALL" = false ] && [ "$EUID" -eq 0 ]; then
-        print_warn "Running as root but not in --system mode"
-        print_warn "This will install for root user, not system-wide"
+        print_warn "Running as root in --user mode"
+        print_warn "This will install for root user's home, not system-wide"
         sleep 2
     fi
 }
@@ -198,6 +200,12 @@ install_configs() {
 install_binary() {
     print_info "Installing binary..."
     
+    # Check if binary already exists
+    if [ -f "$INSTALL_DIR/xw" ]; then
+        print_warn "Existing binary found at $INSTALL_DIR/xw, will be overwritten"
+    fi
+    
+    # Install (will overwrite if exists)
     install -m 755 "$XW_BINARY" "$INSTALL_DIR/xw"
     
     print_info "✓ Binary installed to $INSTALL_DIR/xw"

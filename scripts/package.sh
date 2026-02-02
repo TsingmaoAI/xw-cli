@@ -100,27 +100,27 @@ Quick Install:
 
 2. Choose installation mode:
 
-   # User installation (no sudo required)
-   bash scripts/install.sh
+   # System installation (default, requires sudo, installs as service)
+   sudo bash scripts/install.sh
    
-   # System installation (requires sudo, installs as service)
-   sudo bash scripts/install.sh --system
+   # User installation (no sudo required)
+   bash scripts/install.sh --user
 
 Installation Modes:
 -------------------
-User Installation (default):
-  - Binary: ~/.local/bin/xw
-  - Config: ~/.xw/*.yaml
-  - Data:   ~/.xw/data/
-  - No systemd service
-  - Run manually: xw serve
-
-System Installation (--system):
+System Installation (default):
   - Binary: /usr/local/bin/xw
   - Config: /etc/xw/*.yaml
   - Data:   /var/lib/xw/
   - Systemd service installed
   - Auto-start: systemctl enable xw-server
+
+User Installation (--user):
+  - Binary: ~/.local/bin/xw
+  - Config: ~/.xw/*.yaml
+  - Data:   ~/.xw/data/
+  - No systemd service
+  - Run manually: xw serve
 
 Manual Install:
 ---------------

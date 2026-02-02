@@ -278,16 +278,13 @@ func runStart(opts *StartOptions) error {
 	select {
 	case <-logSigChan:
 		fmt.Println()
-		fmt.Printf("\nReceived interrupt signal. Stopping and removing %s...\n", instanceAlias)
+		fmt.Printf("\nReceived interrupt signal. Removing %s...\n", instanceAlias)
 		
-		// Stop the instance
-		if err := client.StopInstanceByAlias(instanceAlias, false); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to stop instance: %v\n", err)
-		}
-		
-		// Remove the instance
+		// Remove the instance directly (no need to stop first)
 		if err := client.RemoveInstanceByAlias(instanceAlias, true); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to remove instance: %v\n", err)
+		} else {
+			fmt.Printf("Removed instance: %s\n", instanceAlias)
 		}
 		
 	case err := <-logDone:
@@ -297,10 +294,13 @@ func runStart(opts *StartOptions) error {
 			fmt.Println("\nLog stream ended")
 		}
 		
-		// Auto cleanup when log stream ends
+		// Auto cleanup when log stream ends - remove directly
 		fmt.Printf("Cleaning up %s...\n", instanceAlias)
-		client.StopInstanceByAlias(instanceAlias, false)
-		client.RemoveInstanceByAlias(instanceAlias, true)
+		if err := client.RemoveInstanceByAlias(instanceAlias, true); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to remove instance: %v\n", err)
+		} else {
+			fmt.Printf("Removed instance: %s\n", instanceAlias)
+		}
 	}
 	
 	return nil

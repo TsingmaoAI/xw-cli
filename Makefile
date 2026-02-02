@@ -93,9 +93,12 @@ install: build ## Install binaries and systemd service (system-wide)
 		exit 1; \
 	fi
 	
-	# Install binary
+	# Install binary (will overwrite if exists)
+	@if [ -f $(INSTALL_DIR)/xw ]; then \
+		echo "  Overwriting existing binary at $(INSTALL_DIR)/xw"; \
+	fi
 	install -m 755 $(CLI_TARGET) $(INSTALL_DIR)/xw
-	@echo "✓ Binary installed to $(INSTALL_DIR)"
+	@echo "✓ Binary installed to $(INSTALL_DIR)/xw"
 	
 	# Create xw user and group if they don't exist
 	@if ! id -u xw > /dev/null 2>&1; then \

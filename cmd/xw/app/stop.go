@@ -19,7 +19,7 @@ type StopOptions struct {
 
 // NewStopCommand creates the stop command.
 //
-// The stop command stops a running model instance.
+// The stop command stops and removes a running model instance.
 //
 // Usage:
 //
@@ -27,10 +27,10 @@ type StopOptions struct {
 //
 // Examples:
 //
-//	# Stop an instance
+//	# Stop and remove an instance
 //	xw stop my-model
 //
-//	# Force stop
+//	# Force stop and remove
 //	xw stop test --force
 //
 // Parameters:
@@ -45,20 +45,19 @@ func NewStopCommand(globalOpts *GlobalOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "stop ALIAS",
-		Short: "Stop a running model instance",
-		Long: `Stop a running model instance by its alias.
+		Short: "Stop and remove a running model instance",
+		Long: `Stop and remove a running model instance by its alias.
 
 The alias can be found using 'xw ps'. Stopping an instance will:
   - Stop the backend process/container
-  - Keep the instance configuration
-  - The instance can be viewed with 'xw ps --all'
+  - Remove the container and free resources
+  - Permanently delete the instance
 
-To completely remove the instance, use 'xw rmi ALIAS' after stopping.
 Use --force to stop an instance even if it's currently processing requests.`,
-		Example: `  # Stop an instance
+		Example: `  # Stop and remove an instance
   xw stop my-model
 
-  # Force stop
+  # Force stop and remove
   xw stop test --force`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,16 +73,18 @@ Use --force to stop an instance even if it's currently processing requests.`,
 }
 
 // runStop executes the stop command logic
+// Now it stops AND removes the instance (equivalent to rmi)
 func runStop(opts *StopOptions) error {
 	client := getClient(opts.GlobalOptions)
 
-	// Stop the instance via server API (using alias)
-	err := client.StopInstanceByAlias(opts.Alias, opts.Force)
+	// Stop and remove the instance via server API (using alias)
+	// This now calls the remove API with force flag
+	err := client.RemoveInstanceByAlias(opts.Alias, true)
 	if err != nil {
 		return fmt.Errorf("failed to stop instance: %w", err)
 	}
 
-	fmt.Printf("Stopped instance: %s\n", opts.Alias)
+	fmt.Printf("Stopped and removed instance: %s\n", opts.Alias)
 
 	return nil
 }
