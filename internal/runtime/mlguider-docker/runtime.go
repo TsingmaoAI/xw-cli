@@ -417,6 +417,13 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		AttachStdin:  true,  // Attach stdin for interactive shells
 	}
 
+	// Get shared memory size for inference workloads
+	// MLGuider requires adequate shared memory for DataLoader workers and model tensor sharing
+	var shmSize int64 = 16 * 1024 * 1024 * 1024 // Default 16GB
+	if shmProvider, ok := sandbox.(interface{ GetSharedMemorySize() int64 }); ok {
+		shmSize = shmProvider.GetSharedMemorySize()
+	}
+
 	// Create host configuration with networking, devices, and security settings
 	hostConfig := &container.HostConfig{
 		// Use bridge networking with port mapping for isolation and security
@@ -436,6 +443,9 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		
 		// Privileged mode required for Ascend driver interaction
 		Privileged: true,
+		
+		// Shared memory for DataLoader and model tensor sharing
+		ShmSize: shmSize,
 		
 		// Restart policy: never restart automatically
 		// Instance lifecycle is managed by xw server

@@ -358,3 +358,20 @@ func (s *AscendSandbox) Supports(deviceType string) bool {
 	return false
 }
 
+// GetSharedMemorySize returns the shared memory size required for MLGuider.
+//
+// MLGuider requires adequate shared memory for:
+//   - PyTorch DataLoader workers in multi-process mode
+//   - Model tensor sharing in distributed inference
+//   - Inter-process communication buffers
+//
+// The default 64MB shared memory in Docker is often insufficient for LLM
+// inference workloads.
+//
+// Returns:
+//   - Shared memory size in bytes (100GB = 100 * 1024^3)
+func (s *AscendSandbox) GetSharedMemorySize() int64 {
+	// 100GB shared memory for LLM inference workloads
+	return 100 * 1024 * 1024 * 1024
+}
+

@@ -199,3 +199,20 @@ func (s *MetaXSandbox) Supports(deviceType string) bool {
 	}
 	return false
 }
+
+// GetSharedMemorySize returns the shared memory size required for vLLM on MetaX.
+//
+// vLLM requires adequate shared memory for:
+//   - PyTorch DataLoader workers in multi-process mode
+//   - KV cache management across processes
+//   - Tensor sharing in distributed inference
+//
+// The default 64MB shared memory in Docker is often insufficient for LLM
+// inference workloads.
+//
+// Returns:
+//   - Shared memory size in bytes (100GB = 100 * 1024^3)
+func (s *MetaXSandbox) GetSharedMemorySize() int64 {
+	// 100GB shared memory for LLM inference workloads
+	return 100 * 1024 * 1024 * 1024
+}
