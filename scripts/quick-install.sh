@@ -179,26 +179,19 @@ install_xw() {
     # Make install script executable
     chmod +x "$install_script"
     
-    # Determine installation mode
-    local install_mode="user"
+    # Always use user-mode installation by default
+    print_info "Using user-mode installation (recommended)"
+    print_info "Installation path: ~/.local/bin"
     if [ "$EUID" -eq 0 ]; then
-        install_mode="system"
-        print_info "Running as root - will install system-wide"
-    else
-        print_info "Running as regular user - will install to user directory"
-        print_info "Installation path: ~/.local/bin"
+        print_warning "Running as root, but installing to user directory"
+        print_info "For system-wide installation, run install.sh directly without --user flag"
     fi
     echo ""
     
-    # Run installation
+    # Run installation with --user flag
     print_info "Running installation..."
     cd "$extract_dir"
-    
-    if [ "$install_mode" = "system" ]; then
-        ./scripts/install.sh
-    else
-        ./scripts/install.sh --user
-    fi
+    ./scripts/install.sh --user
     
     echo ""
     print_success "xw ${VERSION} installed successfully!"
@@ -213,11 +206,7 @@ install_xw() {
         print_info "You may need to:"
         print_info "  1. Start a new terminal session"
         print_info "  2. Or run: source ~/.bashrc (or ~/.zshrc)"
-        if [ "$install_mode" = "user" ]; then
-            print_info "  3. Or add ~/.local/bin to your PATH"
-        else
-            print_info "  3. Or add /usr/local/bin to your PATH"
-        fi
+        print_info "  3. Or add ~/.local/bin to your PATH"
     fi
     echo ""
     
