@@ -367,8 +367,11 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 	}
 
 	// Get shared memory size for distributed inference
-	// MindIE requires large shared memory (typically 500GB) for multi-device communication
-	shmSize := sandbox.GetSharedMemorySize()
+	// MindIE requires large shared memory for multi-device communication
+	var shmSize int64 = 16 * 1024 * 1024 * 1024 // Default 16GB
+	if shmProvider, ok := sandbox.(interface{ GetSharedMemorySize() int64 }); ok {
+		shmSize = shmProvider.GetSharedMemorySize()
+	}
 
 	// Build host configuration with MindIE-specific settings
 	hostConfig := &container.HostConfig{
@@ -450,15 +453,12 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 // MindIESandbox extends the base DeviceSandbox interface with MindIE-specific methods.
 //
 // This interface adds MindIE-specific functionality on top of the standard
-// DeviceSandbox interface, particularly for shared memory configuration.
+// DeviceSandbox interface.
+//
+// Note: Sandboxes can optionally implement GetSharedMemorySize() int64 method.
+// If not implemented, a default 16GB shared memory will be used.
 type MindIESandbox interface {
 	runtime.DeviceSandbox
-	
-	// GetSharedMemorySize returns the shared memory size required for MindIE.
-	//
-	// Returns:
-	//   - Shared memory size in bytes
-	GetSharedMemorySize() int64
 	
 	// Supports checks if this sandbox supports the given device type.
 	//

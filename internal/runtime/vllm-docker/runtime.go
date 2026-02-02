@@ -333,6 +333,13 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		})
 	}
 	
+	// Get shared memory size for inference workloads
+	// vLLM requires adequate shared memory for DataLoader workers and KV cache management
+	var shmSize int64 = 16 * 1024 * 1024 * 1024 // Default 16GB
+	if shmProvider, ok := sandbox.(interface{ GetSharedMemorySize() int64 }); ok {
+		shmSize = shmProvider.GetSharedMemorySize()
+	}
+
 	// Build host configuration with device-specific settings
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -344,6 +351,7 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		Privileged:   sandbox.RequiresPrivileged(), // May require privileged mode for device access
 		Runtime:      sandbox.GetDockerRuntime(),   // Device-specific runtime (e.g., "runc")
 		Init:         runtime.BoolPtr(true),        // Use init for proper signal handling
+		ShmSize:      shmSize,                      // Shared memory for DataLoader and KV cache
 		RestartPolicy: container.RestartPolicy{
 			Name: "no", // No auto-restart, instance lifecycle managed by xw server
 		},

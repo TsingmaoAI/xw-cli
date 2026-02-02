@@ -252,14 +252,13 @@ func (s *AscendSandbox) GetDockerRuntime() string {
 //   - Model parallel computation buffers
 //
 // The default 64MB shared memory in Docker is insufficient for multi-device
-// inference workloads. MindIE typically requires 500GB for optimal performance
-// with 4+ NPUs.
+// inference workloads.
 //
 // Returns:
-//   - Shared memory size in bytes (500GB = 500 * 1024^3)
+//   - Shared memory size in bytes (100GB = 100 * 1024^3)
 func (s *AscendSandbox) GetSharedMemorySize() int64 {
-	// 500GB shared memory for multi-device distributed inference
-	return 500 * 1024 * 1024 * 1024
+	// 100GB shared memory for multi-device distributed inference
+	return 100 * 1024 * 1024 * 1024
 }
 
 // supportedDeviceTypes lists all device types supported by this sandbox.
