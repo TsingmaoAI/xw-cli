@@ -86,20 +86,6 @@ xw ps
 <table>
   <tr>
     <td align="center">
-      <img src="images/wx_1.jpg" width="200px" alt="微信群1"/><br/>
-      <sub><b>微信群 1</b></sub>
-    </td>
-    <td align="center">
-      <img src="images/wx_2.jpg" width="200px" alt="微信群2"/><br/>
-      <sub><b>微信群 2</b></sub>
-    </td>
-    <td align="center">
-      <img src="images/wx_3.jpg" width="200px" alt="微信群3"/><br/>
-      <sub><b>微信群 3</b></sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
       <img src="images/wx_4.jpg" width="200px" alt="微信群4"/><br/>
       <sub><b>微信群 4</b></sub>
     </td>
