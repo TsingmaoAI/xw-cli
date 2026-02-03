@@ -199,8 +199,8 @@ install_xw() {
     
     # Verify installation
     if command_exists xw; then
-        print_info "Installation verified. Version:"
-        xw version || xw --version || true
+        print_success "Installation verified!"
+        print_info "Run 'xw version' to check the installed version"
     else
         print_warning "xw command not found in PATH"
         print_info "You may need to:"
