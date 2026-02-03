@@ -98,6 +98,20 @@ xw ps
       <sub><b>微信群 3</b></sub>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <img src="images/wx_4.jpg" width="200px" alt="微信群4"/><br/>
+      <sub><b>微信群 4</b></sub>
+    </td>
+    <td align="center">
+      <img src="images/wx_5.jpg" width="200px" alt="微信群5"/><br/>
+      <sub><b>微信群 5</b></sub>
+    </td>
+    <td align="center">
+      <img src="images/wx_6.jpg" width="200px" alt="微信群6"/><br/>
+      <sub><b>微信群 6</b></sub>
+    </td>
+  </tr>
 </table>
 
 *如群二维码失效，请通过 Issue 联系我们*
