@@ -11,14 +11,17 @@ import (
 
 // DeviceInfo represents device information returned from the server.
 type DeviceInfo struct {
-	VendorID     string   `json:"vendor_id"`
-	DeviceID     string   `json:"device_id"`
-	BusAddress   string   `json:"bus_address"`
-	ModelName    string   `json:"model_name"`
-	ConfigKey    string   `json:"config_key"`
-	DeviceType   string   `json:"device_type"`
-	Generation   string   `json:"generation"`
-	Capabilities []string `json:"capabilities"`
+	VendorID            string   `json:"vendor_id"`
+	DeviceID            string   `json:"device_id"`
+	BusAddress          string   `json:"bus_address"`
+	ModelName           string   `json:"model_name"`
+	ConfigKey           string   `json:"config_key"`
+	DeviceType          string   `json:"device_type"`
+	Generation          string   `json:"generation"`
+	Capabilities        []string `json:"capabilities"`
+	PhysicalDeviceIndex int      `json:"physical_device_index"`
+	ChipIndex           int      `json:"chip_index"`
+	ChipsPerDevice      int      `json:"chips_per_device"`
 }
 
 // ListDevices retrieves a list of devices detected on the server machine.

@@ -25,15 +25,13 @@ vendors:
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
             amd64: NONE
-          mlguider:
-            arm64: harbor.tsingmao.com/mlguider/release:0123-xw-arm64
-            amd64: NONE
       
-      # Ascend 310P
+      # Ascend 310P (Dual-chip card)
       - config_key: ascend-310p
         model_name: Ascend 310P
         device_id: "0xd500"
         generation: Ascend 3xx
+        chips_per_device: 2  # Each PCI device contains 2 AI chips
         runtime_images:
           vllm:
             arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:main-310p-arm64
