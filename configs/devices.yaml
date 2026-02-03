@@ -18,10 +18,11 @@ vendors:
         model_name: Ascend 910B
         device_id: "0xd802"
         generation: Ascend 9xx
-        # Topology: 4 cards with high-speed HCCS interconnect
+        # Topology: 8 cards in 2 groups of 4-card HCCS interconnect
         topology:
           boxes:
-            - devices: [0, 1, 2, 3]  # 4 cards interconnected
+            - devices: [0, 1, 2, 3]  # Group 1: Cards 0-3 interconnected
+            - devices: [4, 5, 6, 7]  # Group 2: Cards 4-7 interconnected
         runtime_images:
           vllm:
             arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.14.0rc1-arm64            
