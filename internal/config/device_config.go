@@ -50,6 +50,12 @@ type ChipModelConfig struct {
 	// Example: ["int8", "fp16", "inference"]
 	Capabilities []string `yaml:"capabilities,omitempty"`
 	
+	// ChipsPerDevice specifies how many AI chips are on each physical PCI device
+	// Default: 1 (single-chip card)
+	// Example: 2 for dual-chip cards like Ascend 910B Duo
+	// This allows proper device enumeration where one PCI device contains multiple inference cores
+	ChipsPerDevice int `yaml:"chips_per_device,omitempty"`
+	
 	// RuntimeImages maps inference engines to their Docker images by architecture
 	// Structure: engine_name -> architecture -> image_url
 	// Example: {"vllm": {"arm64": "quay.io/...", "amd64": "..."}}

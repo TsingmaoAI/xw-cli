@@ -69,13 +69,21 @@ func newDeviceListCommand(globalOpts *GlobalOptions) *cobra.Command {
 			}
 			
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "CHIP KEY\tCHIP\tPCI ADDRESS\tVENDOR:DEVICE")
-			fmt.Fprintln(w, "--------\t----\t-----------\t-------------")
+			fmt.Fprintln(w, "CHIP KEY\tCHIP\tCHIP#\tPCI ADDRESS\tVENDOR:DEVICE")
+			fmt.Fprintln(w, "--------\t----\t-----\t-----------\t-------------")
 			
 			for _, device := range devices {
 				pciID := fmt.Sprintf("%s:%s", device.VendorID, device.DeviceID)
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-					device.DeviceType, device.ModelName, device.BusAddress, pciID)
+				
+				// Format chip index display for multi-chip cards
+				// Format: PhysicalDevice:ChipIndex (e.g., "0:0", "0:1", "1:0", "1:1")
+				chipInfo := "-"
+				if device.ChipsPerDevice > 1 {
+					chipInfo = fmt.Sprintf("%d:%d", device.PhysicalDeviceIndex, device.ChipIndex)
+				}
+				
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+					device.DeviceType, device.ModelName, chipInfo, device.BusAddress, pciID)
 			}
 			
 			w.Flush()

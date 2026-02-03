@@ -123,8 +123,13 @@ func readPCIFile(path string) (string, error) {
 // This function combines PCI device scanning with the chip configuration
 // to identify AI accelerators present in the system.
 //
+// For multi-chip cards (where chips_per_device > 1 in config), each physical
+// PCI device is expanded into multiple logical chips with consecutive indices.
+// For example, if 4 dual-chip cards are detected, this returns 8 logical chips
+// with indices 0-7, allowing the allocator to treat them as independent devices.
+//
 // Returns:
-//   - Map of device type to slice of detected chips
+//   - Map of device type to slice of detected chips (logical chips with consecutive indices)
 //   - Error if scanning fails
 func FindAIChips() (map[string][]DetectedChip, error) {
 	devices, err := ScanPCIDevices()
@@ -139,6 +144,7 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 	}
 	
 	detected := make(map[string][]DetectedChip)
+	physicalDeviceCount := make(map[string]int) // Track physical device count per device type
 	
 	for _, device := range devices {
 		// Lookup chip from configuration using pre-loaded config
@@ -148,20 +154,37 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 			continue
 		}
 		
-		// Found in configuration
-		detectedChip := DetectedChip{
-			VendorID:     device.VendorID,
-			DeviceID:     device.DeviceID,
-			BusAddress:   device.BusAddress,
-			ModelName:    model.ModelName,
-			ConfigKey:    model.ConfigKey,
-			DeviceType:   api.DeviceType(model.ConfigKey),
-			Generation:   model.Generation,
-			Capabilities: model.Capabilities,
+		deviceType := string(model.ConfigKey)
+		
+		// Get current physical device index for this device type
+		physicalIdx := physicalDeviceCount[deviceType]
+		physicalDeviceCount[deviceType]++
+		
+		// Get chips_per_device from config (default to 1 for single-chip cards)
+		chipsPerDevice := model.ChipsPerDevice
+		if chipsPerDevice <= 0 {
+			chipsPerDevice = 1
 		}
 		
-		deviceType := string(detectedChip.DeviceType)
-		detected[deviceType] = append(detected[deviceType], detectedChip)
+		// Expand multi-chip cards: create one DetectedChip per chip
+		// Each gets a consecutive index based on current count for this device type
+		for chipIdx := 0; chipIdx < chipsPerDevice; chipIdx++ {
+			detectedChip := DetectedChip{
+				VendorID:            device.VendorID,
+				DeviceID:            device.DeviceID,
+				BusAddress:          device.BusAddress,
+				ModelName:           model.ModelName,
+				ConfigKey:           model.ConfigKey,
+				DeviceType:          api.DeviceType(model.ConfigKey),
+				Generation:          model.Generation,
+				Capabilities:        model.Capabilities,
+				PhysicalDeviceIndex: physicalIdx,
+				ChipIndex:           chipIdx,
+				ChipsPerDevice:      chipsPerDevice,
+			}
+			
+			detected[deviceType] = append(detected[deviceType], detectedChip)
+		}
 	}
 	
 	return detected, nil
@@ -192,6 +215,18 @@ type DetectedChip struct {
 	
 	// Capabilities lists the chip's capabilities
 	Capabilities []string `json:"capabilities"`
+	
+	// PhysicalDeviceIndex is the index of the physical PCI device (0-based)
+	// Used to identify which physical card this chip belongs to
+	PhysicalDeviceIndex int `json:"physical_device_index"`
+	
+	// ChipIndex is the chip index within a multi-chip card (0-based)
+	// For single-chip cards: 0
+	// For dual-chip cards: 0 or 1
+	ChipIndex int `json:"chip_index"`
+	
+	// ChipsPerDevice indicates total chips on this physical device
+	ChipsPerDevice int `json:"chips_per_device"`
 }
 
 // ParseLspciOutput parses the output of `lspci -nn` command
