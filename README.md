@@ -1,4 +1,4 @@
-![](/xuanwu.png)
+![](/images/xuanwu.png)
 <center> <b>玄武CLI</b>｜<b>xw-cli</b> </center>
 
 <center> 实现国产算力的大模型自由，打造国产版Ollama </center>
@@ -78,6 +78,29 @@ xw ps
 ## 🐛 反馈
 
 如遇到问题或有建议，欢迎 [提交 Issue](https://github.com/TsingmaoAI/xw-cli/issues)
+
+## 💬 社区交流
+
+欢迎加入 xw-cli 微信交流群，与开发者和用户一起讨论技术问题、分享使用经验：
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="images/wx_1.jpg" width="200px" alt="微信群1"/><br/>
+      <sub><b>微信群 1</b></sub>
+    </td>
+    <td align="center">
+      <img src="images/wx_2.jpg" width="200px" alt="微信群2"/><br/>
+      <sub><b>微信群 2</b></sub>
+    </td>
+    <td align="center">
+      <img src="images/wx_3.jpg" width="200px" alt="微信群3"/><br/>
+      <sub><b>微信群 3</b></sub>
+    </td>
+  </tr>
+</table>
+
+*如群二维码失效，请通过 Issue 联系我们*
 
 ---
 
