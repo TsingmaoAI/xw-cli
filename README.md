@@ -27,7 +27,7 @@
 
 ### 前置要求
 - 拥有linux系统
-- 拥有受[支持的国产卡]()，并确认驱动已正确安装
+- 拥有受[支持的国产卡](https://xw.tsingmao.com/hardware.html)，并确认驱动已正确安装
 
 ### 极速安装
 
@@ -49,7 +49,7 @@ xw serve
 xw pull qwen3-8b
 ```
 
-更多模型详见 [xw 模型仓库](xw.tsingmao.com/models)。
+更多模型详见 [xw 模型仓库](https://xw.tsingmao.com/models.html)。
 
 ### 3. 运行模型
 
@@ -71,9 +71,9 @@ xw ps
 
 ## 📚 文档
 
-- **官网**: [xw.tsingmao.com](xw.tsingmao.com)
-- **文档**: [xw.tsingmao.com/doc](xw.tsingmao.com/doc)
-- **模型仓库**: [xw.tsingmao.com/models](xw.tsingmao.com/models)
+- **官网**: [xw.tsingmao.com](https://xw.tsingmao.com/)
+- **文档**: [xw.tsingmao.com/doc](https://xw.tsingmao.com/doc.html)
+- **模型仓库**: [xw.tsingmao.com/models](https://xw.tsingmao.com/models.html)
 
 ## 🐛 反馈
 
@@ -81,4 +81,4 @@ xw ps
 
 ---
 
-本项目由清昴智能团队维护。更多信息访问 [清昴智能官网](www.tsingmao.com)
+本项目由清昴智能团队维护。更多信息访问 [清昴智能官网](https://www.tsingmao.com/)
