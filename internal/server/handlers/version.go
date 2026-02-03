@@ -49,7 +49,6 @@ func (h *Handler) Version(w http.ResponseWriter, r *http.Request) {
 	resp := api.VersionResponse{
 		Version:   h.version,
 		BuildTime: h.buildTime,
-		GitCommit: h.gitCommit,
 	}
 
 	// Return success response

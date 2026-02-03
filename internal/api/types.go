@@ -251,10 +251,6 @@ type VersionResponse struct {
 	// BuildTime is the timestamp when the server binary was built.
 	// Format: RFC3339 (e.g., "2026-01-26T10:00:00Z")
 	BuildTime string `json:"build_time"`
-
-	// GitCommit is the git commit SHA that the build was created from.
-	// Short or full commit hash (e.g., "a1b2c3d" or full 40-char hash)
-	GitCommit string `json:"git_commit"`
 }
 
 // HealthResponse represents the server health status.

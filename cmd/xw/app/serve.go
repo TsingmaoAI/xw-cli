@@ -168,7 +168,7 @@ func runServe(opts *ServeOptions) error {
 	runtimeMgr.SetServerName(identity.Name)
 	
 	// Create server with runtime manager
-	srv := server.NewServer(cfg, runtimeMgr)
+	srv := server.NewServer(cfg, runtimeMgr, GetVersion())
 	
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)

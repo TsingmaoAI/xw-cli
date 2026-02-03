@@ -4,15 +4,13 @@
 # the xw application and server.
 
 # Build information
-VERSION ?= 1.0.0
+VERSION ?= 0.0.1
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
-GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Build flags
 LDFLAGS := -ldflags "\
 	-X main.Version=$(VERSION) \
 	-X main.BuildTime=$(BUILD_TIME) \
-	-X main.GitCommit=$(GIT_COMMIT) \
 	-s -w"
 
 # Build environment for static linking

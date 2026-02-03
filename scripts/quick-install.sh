@@ -232,7 +232,6 @@ main() {
  /_/\_\           
 
 xw - AI Inference Platform
-Version: 1.0.0
 
 EOF
 
