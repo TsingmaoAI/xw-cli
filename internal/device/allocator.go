@@ -231,28 +231,40 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 		allocatedDevices = make(map[int]bool)
 	}
 
-	// Find free devices
-	var freeIndices []int
+	// Group free devices by ConfigKey (chip model)
+	// This ensures we allocate devices of the same model, each with their own topology
+	freeByConfigKey := make(map[string][]int)
 	for i := range a.devices {
 		if !allocatedDevices[i] {
-			freeIndices = append(freeIndices, i)
+			configKey := a.devices[i].ConfigKey
+			freeByConfigKey[configKey] = append(freeByConfigKey[configKey], i)
+		}
+	}
+
+	// Find a chip model with enough free devices
+	var selectedConfigKey string
+	var freeIndices []int
+	for configKey, indices := range freeByConfigKey {
+		if len(indices) >= count {
+			selectedConfigKey = configKey
+			freeIndices = indices
+			break
 		}
 	}
 
 	// Check if enough free devices are available
 	if len(freeIndices) < count {
-		return nil, fmt.Errorf("insufficient free devices: requested %d, available %d", 
-			count, len(freeIndices))
+		// Calculate total free devices across all models for error message
+		totalFree := 0
+		for _, indices := range freeByConfigKey {
+			totalFree += len(indices)
+		}
+		return nil, fmt.Errorf("insufficient free devices of same model: requested %d, available %d total (spread across different models)", 
+			count, totalFree)
 	}
 
-	// Get device type from first free device to determine which topology to use
-	var deviceType string
-	if len(freeIndices) > 0 {
-		deviceType = a.devices[freeIndices[0]].Type
-	}
-
-	// Select best devices using topology-aware allocation
-	allocatedIndices := a.selectBestDevices(freeIndices, count, deviceType)
+	// Select best devices using topology-aware allocation (within same chip model)
+	allocatedIndices := a.selectBestDevices(freeIndices, count, selectedConfigKey)
 
 	// Prepare result
 	result := make([]DeviceInfo, len(allocatedIndices))
@@ -260,8 +272,8 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 		result[i] = a.devices[idx]
 	}
 
-	logger.Info("Allocated %d device(s) to instance %s: %v (from %d free devices)", 
-		count, instanceID, allocatedIndices, len(freeIndices))
+	logger.Info("Allocated %d %s device(s) to instance %s: indices %v (from %d free of this model)", 
+		count, selectedConfigKey, instanceID, allocatedIndices, len(freeIndices))
 
 	return result, nil
 }
@@ -270,7 +282,7 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 //
 // This method implements topology-aware chip selection to minimize total distance
 // between allocated chips. The algorithm:
-//   1. If no topology for device type: select first N chips (backward compatible)
+//   1. If no topology for chip model: select first N chips (backward compatible)
 //   2. With topology: find chip combination with minimum total distance
 //
 // For N chips, total distance = sum of all pairwise distances.
@@ -279,13 +291,13 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 // Parameters:
 //   - freeIndices: Logical chip indices of available chips
 //   - count: Number of chips to select
-//   - deviceType: Device type (e.g., "ascend-910b", "ascend-310p") to find corresponding topology
+//   - configKey: Chip model config key (e.g., "ascend-910b", "ascend-310p") to find corresponding topology
 //
 // Returns:
 //   - Selected logical chip indices optimized for topology
-func (a *Allocator) selectBestDevices(freeIndices []int, count int, deviceType string) []int {
-	// Get topology for this device type
-	topology := a.topologyByType[deviceType]
+func (a *Allocator) selectBestDevices(freeIndices []int, count int, configKey string) []int {
+	// Get topology for this chip model
+	topology := a.topologyByType[configKey]
 	
 	// No topology or single chip: use simple selection
 	if topology == nil || count == 1 {
@@ -298,7 +310,7 @@ func (a *Allocator) selectBestDevices(freeIndices []int, count int, deviceType s
 	
 	// If best distance is already 0, we found optimal allocation (all in same box)
 	if bestDistance == 0 {
-		logger.Debug("Topology-aware allocation for %s: found %d chips in same box (distance=0)", deviceType, count)
+		logger.Debug("Topology-aware allocation for %s: found %d chips in same box (distance=0)", configKey, count)
 		return bestIndices
 	}
 	
@@ -324,7 +336,7 @@ func (a *Allocator) selectBestDevices(freeIndices []int, count int, deviceType s
 		}
 	}
 	
-	logger.Debug("Topology-aware allocation for %s: selected %d chips with total distance=%d", deviceType, count, bestDistance)
+	logger.Debug("Topology-aware allocation for %s: selected %d chips with total distance=%d", configKey, count, bestDistance)
 	return bestIndices
 }
 
