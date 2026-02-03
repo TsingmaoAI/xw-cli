@@ -6,6 +6,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version information (set by main package from ldflags)
+var (
+	version   = "dev"
+	buildTime = "unknown"
+)
+
+// SetVersionInfo sets version information from the main package
+func SetVersionInfo(v, bt string) {
+	version = v
+	buildTime = bt
+}
+
+// GetVersion returns the current version string
+func GetVersion() string {
+	return version
+}
+
 // VersionOptions holds options for the version command
 type VersionOptions struct {
 	*GlobalOptions
@@ -94,9 +111,8 @@ func runVersion(opts *VersionOptions) error {
 	// Show client version
 	if showClient {
 		fmt.Println("Client Version:")
-		fmt.Println("  Version:    1.0.0")
-		fmt.Println("  Build Time: 2026-01-26")
-		fmt.Println("  Git Commit: dev")
+		fmt.Printf("  Version:    %s\n", version)
+		fmt.Printf("  Build Time: %s\n", buildTime)
 	}
 
 	// Show server version
@@ -114,7 +130,6 @@ func runVersion(opts *VersionOptions) error {
 		fmt.Println("Server Version:")
 		fmt.Printf("  Version:    %s\n", resp.Version)
 		fmt.Printf("  Build Time: %s\n", resp.BuildTime)
-		fmt.Printf("  Git Commit: %s\n", resp.GitCommit)
 	}
 
 	return nil

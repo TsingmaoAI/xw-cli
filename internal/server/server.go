@@ -66,9 +66,6 @@ type Server struct {
 	
 	// buildTime is the timestamp when the server was built.
 	buildTime string
-	
-	// gitCommit is the git commit hash of the build.
-	gitCommit string
 }
 
 // NewServer creates and initializes a new server instance.
@@ -84,6 +81,8 @@ type Server struct {
 //
 // Parameters:
 //   - cfg: The configuration for the server
+//   - runtimeMgr: The runtime manager
+//   - version: Server version string
 //
 // Returns:
 //   - A pointer to a fully initialized Server ready to start.
@@ -91,19 +90,18 @@ type Server struct {
 // Example:
 //
 //	cfg := config.NewDefaultConfig()
-//	srv := server.NewServer(cfg)
+//	srv := server.NewServer(cfg, runtimeMgr, "1.0.0")
 //	if err := srv.Start(); err != nil && err != http.ErrServerClosed {
 //	    log.Fatalf("Server error: %v", err)
 //	}
-func NewServer(cfg *config.Config, runtimeMgr *runtime.Manager) *Server {
+func NewServer(cfg *config.Config, runtimeMgr *runtime.Manager, version string) *Server {
 	return &Server{
 		config:         cfg,
 		modelRegistry:  models.GetDefaultRegistry(),
 		deviceManager:  device.NewManager(),
 		runtimeManager: runtimeMgr,
-		version:        "1.0.0",
+		version:        version,
 		buildTime:      time.Now().Format(time.RFC3339),
-		gitCommit:      "dev",
 	}
 }
 
@@ -145,7 +143,6 @@ func (s *Server) Start() error {
 		s.runtimeManager,
 		s.version,
 		s.buildTime,
-		s.gitCommit,
 	)
 
 	// Create proxy handler for inference service proxying

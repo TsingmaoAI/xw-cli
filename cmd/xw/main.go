@@ -23,7 +23,16 @@ import (
 	"github.com/tsingmaoai/xw-cli/cmd/xw/app"
 )
 
+// Version information (set via -ldflags during build)
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+)
+
 func main() {
+	// Pass version info to app package
+	app.SetVersionInfo(Version, BuildTime)
+	
 	cmd := app.NewXWCommand()
 	if err := cmd.Execute(); err != nil {
 		// Error is already printed by cobra, just exit

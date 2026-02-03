@@ -54,9 +54,6 @@ type Handler struct {
 
 	// buildTime is the timestamp when the server was built.
 	buildTime string
-
-	// gitCommit is the git commit hash of the build.
-	gitCommit string
 }
 
 // NewHandler creates a new Handler instance with the provided dependencies.
@@ -85,7 +82,7 @@ func NewHandler(
 	registry *models.Registry,
 	deviceMgr *device.Manager,
 	runtimeMgr *runtime.Manager,
-	version, buildTime, gitCommit string,
+	version, buildTime string,
 ) *Handler {
 	return &Handler{
 		config:         cfg,
@@ -94,7 +91,6 @@ func NewHandler(
 		runtimeManager: runtimeMgr,
 		version:        version,
 		buildTime:      buildTime,
-		gitCommit:      gitCommit,
 	}
 }
 
