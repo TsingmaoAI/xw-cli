@@ -79,6 +79,29 @@ type ChipVendorConfig struct {
 	ChipModels []ChipModelConfig `yaml:"chip_models"`
 }
 
+// TopologyBox represents a group of devices with high-speed interconnection.
+//
+// Devices within the same box are considered to have zero distance for
+// allocation optimization. Devices in different boxes have a distance
+// equal to the absolute difference of their box indices.
+type TopologyBox struct {
+	// Devices is a list of logical chip indices in this box
+	// Example: [0, 1, 2, 3] means logical chips 0-3 have high-speed interconnect
+	// Note: Use logical chip indices, NOT physical device indices
+	Devices []int `yaml:"devices"`
+}
+
+// TopologyConfig defines the physical topology of devices.
+//
+// This configuration enables topology-aware device allocation, ensuring
+// that allocated devices are as close as possible in the physical topology.
+type TopologyConfig struct {
+	// Boxes is a list of device groups with high-speed interconnection
+	// Each box contains devices with zero intra-box distance
+	// Inter-box distance equals |box_index_a - box_index_b|
+	Boxes []TopologyBox `yaml:"boxes,omitempty"`
+}
+
 // DevicesConfig is the root configuration structure for device definitions.
 //
 // This structure maps to the YAML configuration file and contains all
@@ -90,6 +113,10 @@ type DevicesConfig struct {
 	
 	// Vendors contains all supported chip vendors and their models
 	Vendors []ChipVendorConfig `yaml:"vendors"`
+	
+	// Topology defines the physical layout of devices (optional)
+	// Used for topology-aware device allocation
+	Topology *TopologyConfig `yaml:"topology,omitempty"`
 }
 
 // DeviceConfigLoader handles loading and caching of device configurations.

@@ -70,5 +70,22 @@ vendors:
 #   - arm64: ARM 64-bit (aarch64)
 #   - amd64: x86 64-bit (x86_64)
 #   - NONE: Not supported on this architecture
+# - chips_per_device: Number of AI chips per physical PCI device (for multi-chip cards)
 
+# Topology Configuration (Optional)
+# Defines logical chip grouping for topology-aware allocation.
+# Chips within the same box have high-speed interconnect (distance = 0).
+# Chips in different boxes have distance = |box_index_a - box_index_b|.
+#
+# Example configuration for 8 chips in 2 boxes:
+# topology:
+#   boxes:
+#     - devices: [0, 1, 2, 3]  # Box 0: Logical chips 0-3 (high-speed interconnect)
+#     - devices: [4, 5, 6, 7]  # Box 1: Logical chips 4-7 (high-speed interconnect)
+#
+# With this topology:
+# - Allocating 4 chips will prefer [0,1,2,3] or [4,5,6,7] (distance=0, same box)
+# - Cross-box allocation like [2,3,4,5] has higher distance (2 chips from each box)
+#
+# Note: Use logical chip indices (as shown in 'xw device list'), NOT physical device indices
 
