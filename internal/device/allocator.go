@@ -242,9 +242,17 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 	}
 
 	// Find a chip model with enough free devices
+	// Sort by ConfigKey for deterministic selection when multiple models are available
 	var selectedConfigKey string
 	var freeIndices []int
-	for configKey, indices := range freeByConfigKey {
+	var sortedConfigKeys []string
+	for configKey := range freeByConfigKey {
+		sortedConfigKeys = append(sortedConfigKeys, configKey)
+	}
+	sort.Strings(sortedConfigKeys)
+	
+	for _, configKey := range sortedConfigKeys {
+		indices := freeByConfigKey[configKey]
 		if len(indices) >= count {
 			selectedConfigKey = configKey
 			freeIndices = indices
@@ -289,12 +297,12 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 // This ensures allocated chips are as close as possible in physical topology.
 //
 // Parameters:
-//   - freeIndices: Logical chip indices of available chips
+//   - freeIndices: Indices into a.devices array (NOT logical chip indices) of available chips
 //   - count: Number of chips to select
 //   - configKey: Chip model config key (e.g., "ascend-910b", "ascend-310p") to find corresponding topology
 //
 // Returns:
-//   - Selected logical chip indices optimized for topology
+//   - Selected array indices (into a.devices) optimized for topology
 func (a *Allocator) selectBestDevices(freeIndices []int, count int, configKey string) []int {
 	// Get topology for this chip model
 	topology := a.topologyByType[configKey]
@@ -343,21 +351,23 @@ func (a *Allocator) selectBestDevices(freeIndices []int, count int, configKey st
 // calculateTotalDistance calculates the sum of pairwise distances for a chip set.
 //
 // Parameters:
-//   - chipIndices: Logical chip indices to evaluate
+//   - deviceArrayIndices: Indices into a.devices array (NOT logical chip indices)
 //   - topology: Topology configuration to use for distance calculation
 //
 // Returns:
 //   - Total distance (sum of all pairwise distances)
-func (a *Allocator) calculateTotalDistance(chipIndices []int, topology *DeviceTopology) int {
-	if len(chipIndices) <= 1 {
+func (a *Allocator) calculateTotalDistance(deviceArrayIndices []int, topology *DeviceTopology) int {
+	if len(deviceArrayIndices) <= 1 {
 		return 0
 	}
 	
 	totalDistance := 0
-	for i := 0; i < len(chipIndices); i++ {
-		for j := i + 1; j < len(chipIndices); j++ {
-			// Use logical chip indices directly (no conversion needed)
-			totalDistance += topology.GetDistance(chipIndices[i], chipIndices[j])
+	for i := 0; i < len(deviceArrayIndices); i++ {
+		for j := i + 1; j < len(deviceArrayIndices); j++ {
+			// Convert array indices to logical chip indices for topology lookup
+			logicalChipA := a.devices[deviceArrayIndices[i]].Index
+			logicalChipB := a.devices[deviceArrayIndices[j]].Index
+			totalDistance += topology.GetDistance(logicalChipA, logicalChipB)
 		}
 	}
 	
