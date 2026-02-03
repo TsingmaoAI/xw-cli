@@ -27,6 +27,7 @@ type Manager struct {
 	deviceAllocator    *device.Allocator // Lazy-initialized device allocator
 	runtimeParamsConfig *config.RuntimeParamsConfig // Runtime parameter templates
 	configDir          string // Configuration directory for device allocator
+	dataDir            string // Data directory for runtime files
 	stopCh             chan struct{}
 	wg                 sync.WaitGroup
 	serverName         string // Server unique identifier for multi-server support
@@ -446,18 +447,20 @@ func (m *Manager) maintenanceLoop() {
 //
 // Parameters:
 //   - configDir: Configuration directory for storing allocation state
+//   - dataDir: Data directory for runtime files (e.g., converted models)
 //   - opts: Legacy run options from API handler
 //
 // Returns:
 //   - RunInstance with instance metadata
 //   - Error if any step fails
-func (m *Manager) Run(configDir string, opts *RunOptions) (*RunInstance, error) {
+func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("run options cannot be nil")
 	}
 	
-	// Save configDir for device allocation
+	// Save directories for device allocation and runtime files
 	m.configDir = configDir
+	m.dataDir = dataDir
 	
 	// Set default alias to model ID if not specified
 	if opts.Alias == "" {
@@ -652,6 +655,7 @@ func (m *Manager) Run(configDir string, opts *RunOptions) (*RunInstance, error) 
 		BackendType:    opts.BackendType,    // Pass backend type
 		DeploymentMode: opts.DeploymentMode, // Pass deployment mode
 		ServerName:     m.serverName,        // Pass server name for container naming
+		DataDir:        m.dataDir,           // Pass data directory for runtime files
 		Devices:        devices,
 		Port:           opts.Port,
 		Environment:    make(map[string]string),

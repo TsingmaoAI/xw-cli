@@ -255,8 +255,8 @@ func (h *Handler) runModelAsync(ctx context.Context, reqBody *struct {
 	
 	// Start the model
 	eventCh <- "Starting model instance..."
-	// Pass config directory to runtime manager, just like downloader uses h.config.Storage.ModelsDir
-	instance, err := h.runtimeManager.Run(h.config.Storage.ConfigDir, opts)
+	// Pass config and data directories to runtime manager
+	instance, err := h.runtimeManager.Run(h.config.Storage.ConfigDir, h.config.Storage.DataDir, opts)
 	if err != nil {
 		errorCh <- err
 		return
@@ -308,8 +308,8 @@ func (h *Handler) runModelJSON(w http.ResponseWriter, reqBody *struct {
 		AdditionalConfig: reqBody.Config,
 	}
 	
-	// Pass config directory to runtime manager, just like downloader uses h.config.Storage.ModelsDir
-	instance, err := h.runtimeManager.Run(h.config.Storage.ConfigDir, opts)
+	// Pass config and data directories to runtime manager
+	instance, err := h.runtimeManager.Run(h.config.Storage.ConfigDir, h.config.Storage.DataDir, opts)
 	if err != nil {
 		h.WriteError(w, fmt.Sprintf("Failed to start model: %v", err), http.StatusInternalServerError)
 		return
