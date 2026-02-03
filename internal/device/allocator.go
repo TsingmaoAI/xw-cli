@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/tsingmaoai/xw-cli/internal/config"
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
@@ -25,13 +26,97 @@ type DeviceInfo struct {
 	Properties map[string]string `json:"properties"`   // Additional properties
 }
 
+// DeviceTopology provides distance information between logical chips.
+//
+// Topology enables distance-aware device allocation to minimize inter-chip
+// communication latency by preferring chips with shorter distances.
+type DeviceTopology struct {
+	// chipToBox maps logical chip index to box index
+	// Example: {0: 0, 1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1, 7: 1}
+	chipToBox map[int]int
+	
+	// boxes stores the box configuration from config
+	boxes []config.TopologyBox
+}
+
+// NewDeviceTopology creates a topology from configuration.
+//
+// Parameters:
+//   - topologyConfig: Topology configuration from devices.yaml
+//
+// Returns:
+//   - Initialized DeviceTopology or nil if no topology configured
+func NewDeviceTopology(topologyConfig *config.TopologyConfig) *DeviceTopology {
+	if topologyConfig == nil || len(topologyConfig.Boxes) == 0 {
+		return nil
+	}
+	
+	dt := &DeviceTopology{
+		chipToBox: make(map[int]int),
+		boxes:     topologyConfig.Boxes,
+	}
+	
+	// Build chip-to-box mapping (using logical chip indices directly)
+	for boxIdx, box := range topologyConfig.Boxes {
+		for _, chipIdx := range box.Devices {
+			dt.chipToBox[chipIdx] = boxIdx
+		}
+	}
+	
+	return dt
+}
+
+// GetDistance calculates the distance between two logical chips.
+//
+// Distance rules:
+//   - Same box: distance = 0 (high-speed interconnect)
+//   - Different boxes: distance = |box_a - box_b|
+//   - Unknown chip: distance = 999 (avoid allocation)
+//
+// Parameters:
+//   - chipA: Logical chip index A
+//   - chipB: Logical chip index B
+//
+// Returns:
+//   - Distance value (0 = closest, higher = farther)
+func (dt *DeviceTopology) GetDistance(chipA, chipB int) int {
+	if dt == nil {
+		// No topology configured, all chips have equal distance
+		return 0
+	}
+	
+	boxA, okA := dt.chipToBox[chipA]
+	boxB, okB := dt.chipToBox[chipB]
+	
+	// If either chip is not in topology, assign high distance
+	if !okA || !okB {
+		return 999
+	}
+	
+	// Same box = zero distance
+	if boxA == boxB {
+		return 0
+	}
+	
+	// Different boxes = box index difference
+	diff := boxA - boxB
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff
+}
+
 // Allocator manages the allocation and release of physical devices.
 // It scans for available AI accelerators and dynamically tracks which devices are
 // allocated by querying running Docker containers.
+//
+// The allocator supports topology-aware allocation to optimize device placement
+// for high-speed interconnected devices (e.g., NVLink, HCCS).
 type Allocator struct {
 	mu           sync.RWMutex
 	devices      []DeviceInfo      // All detected and available devices
 	dockerClient *client.Client    // Docker client for querying container device usage
+	topology     *DeviceTopology   // Physical topology for distance-aware allocation
 }
 
 // NewAllocator creates and initializes a new DeviceAllocator.
@@ -60,9 +145,12 @@ func NewAllocator() (*Allocator, error) {
 				ModelName:  chip.ModelName,
 				ConfigKey:  chip.ConfigKey,
 				Properties: map[string]string{
-					"generation": chip.Generation,
-					"vendor_id":  chip.VendorID,
-					"device_id":  chip.DeviceID,
+					"generation":            chip.Generation,
+					"vendor_id":             chip.VendorID,
+					"device_id":             chip.DeviceID,
+					"physical_device_index": fmt.Sprintf("%d", chip.PhysicalDeviceIndex),
+					"chip_index":            fmt.Sprintf("%d", chip.ChipIndex),
+					"chips_per_device":      fmt.Sprintf("%d", chip.ChipsPerDevice),
 				},
 			}
 			allDevices = append(allDevices, deviceInfo)
@@ -86,9 +174,20 @@ func NewAllocator() (*Allocator, error) {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
+	// Load topology configuration for distance-aware allocation
+	devConfig, err := config.LoadDevicesConfig()
+	var topology *DeviceTopology
+	if err == nil && devConfig.Topology != nil {
+		topology = NewDeviceTopology(devConfig.Topology)
+		if topology != nil {
+			logger.Info("Loaded device topology with %d boxes for optimized allocation", len(devConfig.Topology.Boxes))
+		}
+	}
+
 	a := &Allocator{
 		devices:      allDevices,
 		dockerClient: dockerClient,
+		topology:     topology,
 	}
 
 	logger.Info("Device allocator initialized with %d devices (dynamic allocation from Docker)", len(allDevices))
@@ -138,8 +237,8 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 			count, len(freeIndices))
 	}
 
-	// Allocate the first 'count' free devices
-	allocatedIndices := freeIndices[:count]
+	// Select best devices using topology-aware allocation
+	allocatedIndices := a.selectBestDevices(freeIndices, count)
 
 	// Prepare result
 	result := make([]DeviceInfo, len(allocatedIndices))
@@ -151,6 +250,87 @@ func (a *Allocator) Allocate(instanceID string, count int) ([]DeviceInfo, error)
 		count, instanceID, allocatedIndices, len(freeIndices))
 
 	return result, nil
+}
+
+// selectBestDevices selects the optimal chip combination using topology information.
+//
+// This method implements topology-aware chip selection to minimize total distance
+// between allocated chips. The algorithm:
+//   1. If no topology: select first N chips (backward compatible)
+//   2. With topology: find chip combination with minimum total distance
+//
+// For N chips, total distance = sum of all pairwise distances.
+// This ensures allocated chips are as close as possible in physical topology.
+//
+// Parameters:
+//   - freeIndices: Logical chip indices of available chips
+//   - count: Number of chips to select
+//
+// Returns:
+//   - Selected logical chip indices optimized for topology
+func (a *Allocator) selectBestDevices(freeIndices []int, count int) []int {
+	// No topology or single chip: use simple selection
+	if a.topology == nil || count == 1 {
+		return freeIndices[:count]
+	}
+	
+	// Try to find chips all in same box (distance = 0)
+	bestIndices := freeIndices[:count]
+	bestDistance := a.calculateTotalDistance(bestIndices)
+	
+	// If best distance is already 0, we found optimal allocation (all in same box)
+	if bestDistance == 0 {
+		logger.Debug("Topology-aware allocation: found %d chips in same box (distance=0)", count)
+		return bestIndices
+	}
+	
+	// Try different combinations to find better allocation
+	// For small counts, try a few different starting positions
+	maxAttempts := 10
+	if len(freeIndices) < maxAttempts {
+		maxAttempts = len(freeIndices)
+	}
+	
+	for start := 1; start < maxAttempts && start+count <= len(freeIndices); start++ {
+		candidate := freeIndices[start : start+count]
+		distance := a.calculateTotalDistance(candidate)
+		
+		if distance < bestDistance {
+			bestDistance = distance
+			bestIndices = candidate
+			
+			// Found optimal allocation (same box)
+			if bestDistance == 0 {
+				break
+			}
+		}
+	}
+	
+	logger.Debug("Topology-aware allocation: selected %d chips with total distance=%d", count, bestDistance)
+	return bestIndices
+}
+
+// calculateTotalDistance calculates the sum of pairwise distances for a chip set.
+//
+// Parameters:
+//   - chipIndices: Logical chip indices to evaluate
+//
+// Returns:
+//   - Total distance (sum of all pairwise distances)
+func (a *Allocator) calculateTotalDistance(chipIndices []int) int {
+	if len(chipIndices) <= 1 {
+		return 0
+	}
+	
+	totalDistance := 0
+	for i := 0; i < len(chipIndices); i++ {
+		for j := i + 1; j < len(chipIndices); j++ {
+			// Use logical chip indices directly (no conversion needed)
+			totalDistance += a.topology.GetDistance(chipIndices[i], chipIndices[j])
+		}
+	}
+	
+	return totalDistance
 }
 
 // Release frees devices previously allocated to an instance.

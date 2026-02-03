@@ -183,7 +183,7 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 				ChipsPerDevice:      chipsPerDevice,
 			}
 			
-			detected[deviceType] = append(detected[deviceType], detectedChip)
+		detected[deviceType] = append(detected[deviceType], detectedChip)
 		}
 	}
 	
