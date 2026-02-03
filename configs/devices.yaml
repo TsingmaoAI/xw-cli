@@ -18,6 +18,10 @@ vendors:
         model_name: Ascend 910B
         device_id: "0xd802"
         generation: Ascend 9xx
+        # Topology: 4 cards with high-speed HCCS interconnect
+        topology:
+          boxes:
+            - devices: [0, 1, 2, 3]  # 4 cards interconnected
         runtime_images:
           vllm:
             arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.14.0rc1-arm64            
@@ -32,6 +36,14 @@ vendors:
         device_id: "0xd500"
         generation: Ascend 3xx
         chips_per_device: 2  # Each PCI device contains 2 AI chips
+        # Topology: Chips on same physical card are high-speed interconnected
+        # Assumes 4 physical cards (8 logical chips total)
+        topology:
+          boxes:
+            - devices: [0, 1]  # Physical card 0
+            - devices: [2, 3]  # Physical card 1
+            - devices: [4, 5]  # Physical card 2
+            - devices: [6, 7]  # Physical card 3
         runtime_images:
           vllm:
             arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:main-310p-arm64
@@ -71,21 +83,8 @@ vendors:
 #   - amd64: x86 64-bit (x86_64)
 #   - NONE: Not supported on this architecture
 # - chips_per_device: Number of AI chips per physical PCI device (for multi-chip cards)
-
-# Topology Configuration (Optional)
-# Defines logical chip grouping for topology-aware allocation.
-# Chips within the same box have high-speed interconnect (distance = 0).
-# Chips in different boxes have distance = |box_index_a - box_index_b|.
-#
-# Example configuration for 8 chips in 2 boxes:
-# topology:
-#   boxes:
-#     - devices: [0, 1, 2, 3]  # Box 0: Logical chips 0-3 (high-speed interconnect)
-#     - devices: [4, 5, 6, 7]  # Box 1: Logical chips 4-7 (high-speed interconnect)
-#
-# With this topology:
-# - Allocating 4 chips will prefer [0,1,2,3] or [4,5,6,7] (distance=0, same box)
-# - Cross-box allocation like [2,3,4,5] has higher distance (2 chips from each box)
-#
-# Note: Use logical chip indices (as shown in 'xw device list'), NOT physical device indices
+# - topology: Logical chip grouping for topology-aware allocation (high-speed interconnect boxes)
+#   - boxes: List of chip groups, each box contains chips with high-speed interconnect
+#   - devices: Logical chip indices (as shown in 'xw device list')
+#   - Distance calculation: same box = 0, different boxes = |box_index_a - box_index_b|
 
