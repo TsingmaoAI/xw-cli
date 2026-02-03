@@ -56,6 +56,10 @@ type ChipModelConfig struct {
 	// This allows proper device enumeration where one PCI device contains multiple inference cores
 	ChipsPerDevice int `yaml:"chips_per_device,omitempty"`
 	
+	// Topology defines the physical topology for this chip model
+	// Used for topology-aware allocation specific to this chip type
+	Topology *TopologyConfig `yaml:"topology,omitempty"`
+	
 	// RuntimeImages maps inference engines to their Docker images by architecture
 	// Structure: engine_name -> architecture -> image_url
 	// Example: {"vllm": {"arm64": "quay.io/...", "amd64": "..."}}
@@ -112,11 +116,8 @@ type DevicesConfig struct {
 	Version string `yaml:"version"`
 	
 	// Vendors contains all supported chip vendors and their models
+	// Each vendor's chip models can define their own topology configuration
 	Vendors []ChipVendorConfig `yaml:"vendors"`
-	
-	// Topology defines the physical layout of devices (optional)
-	// Used for topology-aware device allocation
-	Topology *TopologyConfig `yaml:"topology,omitempty"`
 }
 
 // DeviceConfigLoader handles loading and caching of device configurations.
