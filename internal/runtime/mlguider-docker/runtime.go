@@ -34,6 +34,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -230,18 +231,15 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 	// ORIGIN_MODEL_PATH: Original model directory (e.g., HuggingFace format)
 	env["ORIGIN_MODEL_PATH"] = params.ModelPath
 
-	// MODEL_PATH: Converted/optimized model directory
+	// MODEL_PATH: Converted/optimized model directory under data directory
 	// MLGuider will convert the model if this directory doesn't exist
 	// Multiple instances can share the same converted model directory
-	convertedModelDir := fmt.Sprintf("/tmp/mlguider/%s", params.ModelID)
-	env["MODEL_PATH"] = convertedModelDir
-	
-	// Create the converted model directory on host if it doesn't exist
-	// This directory persists across instance restarts and is shared between instances
-	if err := ensureMLGuiderModelDir(params.ModelID); err != nil {
-		logger.Warn("Failed to create MLGuider model directory: %v", err)
-		// Non-fatal: MLGuider will try to create it if needed
+	// Path structure: {dataDir}/tmp/{modelID}
+	convertedModelDir, err := ensureMLGuiderModelDir(params.DataDir, params.ModelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MLGuider model directory: %w", err)
 	}
+	env["MODEL_PATH"] = convertedModelDir
 
 	// MAX_MODEL_LEN: Maximum sequence length for inference
 	// Default: 8192, configurable via ExtraConfig
@@ -376,12 +374,12 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 	// MLGuider converts the original model to optimized format in this directory
 	// The directory is shared across multiple instances of the same model
 	// If conversion already exists, MLGuider will skip conversion and load directly
-	convertedDir := fmt.Sprintf("/tmp/mlguider/%s", params.ModelID)
+	// Path: {dataDir}/tmp/{modelID}
 	mounts = append(mounts, mount.Mount{
 		Type:     mount.TypeBind,
-		Source:   convertedDir,
-		Target:   convertedDir, // Converted model path for MODEL_PATH env var
-		ReadOnly: false,        // Read-write access required for model conversion
+		Source:   convertedModelDir,
+		Target:   convertedModelDir, // Converted model path for MODEL_PATH env var
+		ReadOnly: false,             // Read-write access required for model conversion
 	})
 
 	// Add device-specific mounts (driver libs, tools, cache)
@@ -522,41 +520,44 @@ func (r *Runtime) Name() string {
 // ensureMLGuiderModelDir creates the MLGuider converted model directory if it doesn't exist.
 //
 // MLGuider converts and optimizes models for efficient inference. The converted models
-// are stored in /tmp/mlguider/{model_id} on the host. This directory:
+// are stored in {dataDir}/tmp/{modelID} on the host. This directory:
 //   - Persists across container restarts
 //   - Is shared between multiple instances of the same model
 //   - Is created with 0755 permissions for read/write/execute access
+//   - Is located parallel to the models directory under the data directory
 //   - Is not automatically cleaned up (user must manually delete if needed)
 //
 // If the directory already exists, this function does nothing (idempotent).
 //
 // Parameters:
+//   - dataDir: Data directory root path (e.g., "~/.xw/data")
 //   - modelID: Model identifier (e.g., "qwen2-0.5b")
 //
 // Returns:
-//   - nil on success or if directory already exists
-//   - error if directory creation fails
-func ensureMLGuiderModelDir(modelID string) error {
-	// Build the converted model directory path
-	convertedDir := fmt.Sprintf("/tmp/mlguider/%s", modelID)
+//   - Absolute path to the created/existing directory
+//   - error if directory creation fails or path exists but is not a directory
+func ensureMLGuiderModelDir(dataDir, modelID string) (string, error) {
+	// Build the converted model directory path under data directory
+	// Path structure: {dataDir}/tmp/{modelID}
+	convertedDir := filepath.Join(dataDir, "tmp", modelID)
 	
 	// Check if directory already exists
 	if info, err := os.Stat(convertedDir); err == nil {
 		if !info.IsDir() {
-			return fmt.Errorf("%s exists but is not a directory", convertedDir)
+			return "", fmt.Errorf("%s exists but is not a directory", convertedDir)
 		}
 		// Directory exists, nothing to do
 		logger.Debug("MLGuider model directory already exists: %s", convertedDir)
-		return nil
+		return convertedDir, nil
 	}
 	
 	// Create directory with parent directories
 	// 0755 permissions: owner rwx, group rx, others rx
 	if err := os.MkdirAll(convertedDir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", convertedDir, err)
+		return "", fmt.Errorf("failed to create directory %s: %w", convertedDir, err)
 	}
 	
 	logger.Info("Created MLGuider model directory: %s", convertedDir)
-	return nil
+	return convertedDir, nil
 }
 

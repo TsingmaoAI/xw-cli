@@ -33,6 +33,7 @@ type CreateParams struct {
 	BackendType      string // Backend type (e.g., "vllm")
 	DeploymentMode   string // Deployment mode (e.g., "docker")
 	ServerName       string // Server unique identifier (added as container name suffix)
+	DataDir          string // Data directory for runtime files (e.g., converted models)
 	Devices          []DeviceInfo
 	Port             int
 	Environment      map[string]string
