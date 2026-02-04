@@ -13,11 +13,29 @@ vendors:
     vendor_id: "0x19e5"
     
     chip_models:
-      # Ascend 910B
+      # Ascend 910B (with variants support)
       - config_key: ascend-910b
         model_name: Ascend 910B
         device_id: "0xd802"
         generation: Ascend 9xx
+        # Variants: Different sub-versions with unique subsystem_device_id
+        # All variants share the same runtime_images from base model config
+        # Uncomment and configure based on your actual hardware
+        # Get subsystem_device_id via: cat /sys/bus/pci/devices/0000:XX:YY.Z/subsystem_device
+        variants:
+          - subsystem_device_id: "0x3001"
+            variant_key: "ascend-910b1"
+            variant_name: "910B1"
+          # - subsystem_device_id: "0x0002"
+          #   variant_key: "ascend-910b2"
+          #   variant_name: "910B2"
+          # - subsystem_device_id: "0x0002"
+          #   variant_key: "ascend-910b2"
+          #   variant_name: "910B2"
+          - subsystem_device_id: "0x4000"
+            variant_key: "ascend-910b4"
+            variant_name: "910B4"
+        # If no variant matches, base config (ascend-910b) is used as fallback
         # Topology: 8 cards in 2 groups of 4-card HCCS interconnect
         topology:
           boxes:
@@ -79,6 +97,41 @@ vendors:
 # Notes:
 # - config_key: Unique identifier used in runtime configuration and model definitions
 # - vendor_id and device_id: PCIe identification (16-bit hex values, get via: lspci -nn)
+#
+# - variants: (Optional) List of chip sub-versions with different subsystem_device_id
+#   - Used to distinguish between models like 910B1, 910B2 that share the same device_id
+#   - All variants share the same runtime_images from base model config
+#   - Get subsystem_device_id via: cat /sys/bus/pci/devices/0000:XX:YY.Z/subsystem_device
+#   
+#   Three-phase matching logic (优雅降级):
+#     Phase 1: If model has variants, try to match subsystem_device_id
+#              → Returns variant config (variant_key, variant_name)
+#     Phase 2: If no variant matched, use base model config as fallback
+#              → Returns base config (config_key, model_name)
+#     Phase 3: If no model matched, returns nil
+#   
+#   Recommended configuration pattern (NEW FORMAT):
+#       - config_key: ascend-910b
+#         model_name: Ascend 910B
+#         device_id: "0xd802"
+#         variants:
+#           - subsystem_device_id: "0x0001"
+#             variant_key: "ascend-910b1"
+#             variant_name: "910B1"
+#           - subsystem_device_id: "0x0002"
+#             variant_key: "ascend-910b2"
+#             variant_name: "910B2"
+#         runtime_images:  # Shared by all variants
+#           vllm:
+#             arm64: harbor.xxx/vllm-910b:latest
+#   
+#   Benefits:
+#     - Clean structure: All 910B variants under one chip model
+#     - Automatic fallback: Unknown subsystem_device_id uses base config
+#     - Shared images: All variants use the same runtime_images
+#
+# - subsystem_device_id: (DEPRECATED) Use variants instead
+#   - Old format for backward compatibility only
 # - runtime_images: Docker images for inference engines by CPU architecture
 #   - arm64: ARM 64-bit (aarch64)
 #   - amd64: x86 64-bit (x86_64)

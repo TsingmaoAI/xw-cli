@@ -20,6 +20,26 @@ import (
 )
 
 
+// ChipVariant defines a specific variant of a chip model.
+//
+// Variants are used to distinguish between different sub-versions of the same chip
+// that share the same device_id but have different subsystem_device_id.
+// Example: 910B1, 910B2, 910B3 are variants of 910B
+// Note: All variants of the same chip model use the same runtime images from base config
+type ChipVariant struct {
+	// SubsystemDeviceID is the PCIe subsystem device identifier (16-bit hex value)
+	// Example: "0x0001" for 910B1, "0x0002" for 910B2
+	SubsystemDeviceID string `yaml:"subsystem_device_id"`
+	
+	// VariantKey is the unique identifier for this variant
+	// Example: "ascend-910b1", "ascend-910b2"
+	VariantKey string `yaml:"variant_key"`
+	
+	// VariantName is the human-readable variant name
+	// Example: "910B1", "910B2"
+	VariantName string `yaml:"variant_name,omitempty"`
+}
+
 // ChipModelConfig defines configuration for a specific chip model.
 //
 // Each chip model has unique characteristics that affect how xw manages it:
@@ -28,6 +48,7 @@ import (
 //   - Capabilities (for compatibility checks)
 //   - Generation info (for version-specific handling)
 //   - Runtime images (Docker images for inference engines)
+//   - Variants (optional sub-versions with different subsystem_device_id)
 type ChipModelConfig struct {
 	// ConfigKey is the unique identifier used in runtime configuration
 	// This key maps to runtime images and deployment settings
@@ -41,6 +62,18 @@ type ChipModelConfig struct {
 	// DeviceID is the PCIe device identifier (16-bit hex value)
 	// Example: "0xd802" for Ascend 910B
 	DeviceID string `yaml:"device_id"`
+	
+	// SubsystemDeviceID is the PCIe subsystem device identifier (16-bit hex value, optional)
+	// DEPRECATED: Use Variants instead for chip sub-versions
+	// When empty, matching is based on VendorID and DeviceID only
+	SubsystemDeviceID string `yaml:"subsystem_device_id,omitempty"`
+	
+	// Variants defines a list of chip sub-versions with different subsystem_device_id
+	// Used to distinguish between models like 910B1, 910B2, etc.
+	// If hardware matches a variant, the variant's config_key is used
+	// All variants share the same runtime_images from base model config
+	// If no variant matches, the base model config is used as fallback
+	Variants []ChipVariant `yaml:"variants,omitempty"`
 	
 	// Generation groups related chip models (optional)
 	// Example: "Ascend 9xx", "Ascend 3xx"
@@ -63,6 +96,7 @@ type ChipModelConfig struct {
 	// RuntimeImages maps inference engines to their Docker images by architecture
 	// Structure: engine_name -> architecture -> image_url
 	// Example: {"vllm": {"arm64": "quay.io/...", "amd64": "..."}}
+	// All variants of this chip model share the same runtime images
 	RuntimeImages map[string]map[string]string `yaml:"runtime_images,omitempty"`
 }
 
@@ -350,14 +384,14 @@ func countChipModels(config *DevicesConfig) int {
 // FindChipModelByConfigKey searches for a chip model by its config key.
 //
 // This is a convenience method for looking up chip configuration by the
-// unique config_key identifier.
+// base model's config_key identifier. It does NOT search variant keys.
 //
 // Parameters:
 //   - config: DevicesConfig to search
-//   - configKey: The config_key to find
+//   - configKey: The base model config_key to find (e.g., "ascend-910b")
 //
 // Returns:
-//   - Pointer to ChipModelConfig if found
+//   - Pointer to ChipModelConfig if found (base model)
 //   - nil if not found
 func FindChipModelByConfigKey(config *DevicesConfig, configKey string) *ChipModelConfig {
 	for _, vendor := range config.Vendors {
@@ -373,31 +407,95 @@ func FindChipModelByConfigKey(config *DevicesConfig, configKey string) *ChipMode
 // FindChipModelByIdentifier searches for a chip model by PCIe hardware identifier.
 //
 // This method is used during device detection to match discovered hardware
-// against known chip models.
+// against known chip models. It supports variant matching for chip sub-versions.
+//
+// Three-phase matching logic (优雅降级):
+//   Phase 1 (Variant match): If model has variants, try to match subsystem_device_id
+//     - Returns base model + matched variant
+//   Phase 2 (Legacy exact match): Try configs WITH subsystem_device_id (deprecated)
+//     - For backward compatibility with old config format
+//   Phase 3 (Fallback): Match configs WITHOUT subsystem_device_id or variants
+//     - Acts as generic fallback for unknown variants
+//
+// Configuration example (new format with variants):
+//   - config_key: ascend-910b
+//     device_id: "0xd802"
+//     variants:
+//       - subsystem_device_id: "0x0001"
+//         variant_key: "ascend-910b1"
+//         variant_name: "910B1"
+//       - subsystem_device_id: "0x0002"
+//         variant_key: "ascend-910b2"
+//         variant_name: "910B2"
+//     # Base config acts as fallback if no variant matches
 //
 // Parameters:
 //   - config: DevicesConfig to search
 //   - vendorID: PCIe vendor identifier (e.g., "0x19e5")
 //   - deviceID: PCIe device identifier (e.g., "0xd802")
+//   - subsystemDeviceID: PCIe subsystem device identifier (e.g., "0x0001"), can be empty
 //
 // Returns:
-//   - Pointer to ChipModelConfig if found
 //   - Pointer to ChipVendorConfig for the vendor if found
-//   - nil, nil if not found
-func FindChipModelByIdentifier(config *DevicesConfig, vendorID, deviceID string) (*ChipVendorConfig, *ChipModelConfig) {
+//   - Pointer to ChipModelConfig (base model) if found
+//   - Pointer to ChipVariant if a variant matched (nil if using base config)
+//   - All nil if not found
+func FindChipModelByIdentifier(config *DevicesConfig, vendorID, deviceID, subsystemDeviceID string) (*ChipVendorConfig, *ChipModelConfig, *ChipVariant) {
+	var fallbackVendor *ChipVendorConfig
+	var fallbackModel *ChipModelConfig
+	
 	for i := range config.Vendors {
 		if config.Vendors[i].VendorID != vendorID {
 			continue
 		}
-		// Found matching vendor, now search for device
+		
+		// Found matching vendor, now search for device with three-phase approach
 		for j := range config.Vendors[i].ChipModels {
-			if config.Vendors[i].ChipModels[j].DeviceID == deviceID {
-				// Found matching chip model
-				return &config.Vendors[i], &config.Vendors[i].ChipModels[j]
+			model := &config.Vendors[i].ChipModels[j]
+			
+			// Device ID must match
+			if model.DeviceID != deviceID {
+				continue
+			}
+			
+			// Phase 1: Try to match variants (new format)
+			if len(model.Variants) > 0 && subsystemDeviceID != "" {
+				for k := range model.Variants {
+					variant := &model.Variants[k]
+					if variant.SubsystemDeviceID == subsystemDeviceID {
+						// Variant matched! Return base model + variant
+						return &config.Vendors[i], model, variant
+					}
+				}
+				// Has variants but none matched, store as potential fallback
+				if fallbackVendor == nil {
+					fallbackVendor = &config.Vendors[i]
+					fallbackModel = model
+				}
+				continue
+			}
+			
+			// Phase 2: Legacy exact match - config has subsystem_device_id (deprecated format)
+			if model.SubsystemDeviceID != "" {
+				if model.SubsystemDeviceID == subsystemDeviceID {
+					// Exact match found! Return immediately (no variant)
+					return &config.Vendors[i], model, nil
+				}
+				// Config has subsystem_device_id but doesn't match, continue searching
+				continue
+			}
+			
+			// Phase 3: Potential fallback - config has no subsystem_device_id or variants
+			// Store as fallback but continue searching for exact match
+			if fallbackVendor == nil {
+				fallbackVendor = &config.Vendors[i]
+				fallbackModel = model
 			}
 		}
 	}
-	return nil, nil
+	
+	// Return fallback if no exact match was found
+	return fallbackVendor, fallbackModel, nil
 }
 
 // GetAllConfigKeys returns a list of all config keys defined in the configuration.

@@ -16,7 +16,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 
-	"github.com/tsingmaoai/xw-cli/internal/config"
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
@@ -931,16 +930,11 @@ func GetImageForEngine(configMap map[string]map[string]map[string]string, device
 		return "", fmt.Errorf("no devices provided")
 	}
 	
-	// Get chip model name from first device
-	chipModelName := devices[0].ModelName
-	if chipModelName == "" {
-		return "", fmt.Errorf("device model name is empty")
-	}
-	
-	// Map chip model name to configuration key using config package
-	configKey, err := config.GetConfigKeyByModelName(chipModelName)
-	if err != nil {
-		return "", fmt.Errorf("failed to get config key: %w", err)
+	// Use ConfigKey directly (base model config key for image lookup)
+	// ConfigKey is always the base model key, not variant_key
+	configKey := devices[0].ConfigKey
+	if configKey == "" {
+		return "", fmt.Errorf("device config key is empty")
 	}
 	
 	// Get image for this chip model and engine (auto-detect architecture)
@@ -965,7 +959,7 @@ func GetImageForEngine(configMap map[string]map[string]map[string]string, device
 		return "", fmt.Errorf("architecture %s not found for chip model %s and engine %s", arch, configKey, engineName)
 	}
 	
-	logger.Debug("Selected image for %s (%s): %s", chipModelName, engineName, image)
+	logger.Debug("Selected image for %s (%s): %s", configKey, engineName, image)
 	return image, nil
 }
 

@@ -72,6 +72,8 @@ func LoadRuntimeImagesConfigFrom(devicesConfigPath string) (RuntimeImagesConfig,
 	for _, vendor := range devicesConfig.Vendors {
 		for _, chipModel := range vendor.ChipModels {
 			if len(chipModel.RuntimeImages) > 0 {
+				// Store runtime images only for base model config_key
+				// Variants share the same images, sandbox will use base config_key to look up
 				runtimeImages[chipModel.ConfigKey] = chipModel.RuntimeImages
 			}
 		}

@@ -60,7 +60,8 @@ type DeviceInfo struct {
 	PCIAddress string
 	DevicePath string
 	ModelName  string
-	ConfigKey  string // Configuration key for runtime_images.yaml lookup
+	ConfigKey  string // Base model config key (for sandbox selection, image lookup)
+	VariantKey string // Specific variant key (for runtime_params matching), empty if no variant
 	Properties map[string]string
 }
 

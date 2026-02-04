@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/tsingmaoai/xw-cli/internal/api"
+	"github.com/tsingmaoai/xw-cli/internal/config"
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
 
@@ -240,22 +241,53 @@ func (r *Registry) Unregister(name string) error {
 // supportsDevice checks if a model supports a specific device type.
 //
 // This is a helper method used internally by List() to filter models by
-// device compatibility. It iterates through the model's SupportedDevices
-// slice and returns true if a match is found.
+// device compatibility. It supports both base model keys and variant keys.
+//
+// Matching logic:
+//   1. Direct match: If deviceType matches model.SupportedDevices directly
+//   2. Base model match: If deviceType is a variant, try matching with base model key
 //
 // Parameters:
 //   - model: The model to check
-//   - deviceType: The device type to check for
+//   - deviceType: The device type to check for (may be variant_key or base config_key)
 //
 // Returns:
 //   - true if the model supports the specified device type
 //   - false otherwise
 func (r *Registry) supportsDevice(model *api.Model, deviceType api.DeviceType) bool {
+	// Try direct match first
 	for _, dt := range model.SupportedDevices {
 		if dt == deviceType {
 			return true
 		}
 	}
+	
+	// If direct match fails, try to find base config_key for variants
+	// Load device config to check if deviceType is a variant
+	devConfig, err := config.LoadDevicesConfig()
+	if err != nil {
+		return false
+	}
+	
+	// Try to find the base model for this device type
+	for _, vendor := range devConfig.Vendors {
+		for _, chipModel := range vendor.ChipModels {
+			// Check if deviceType is a variant of this chip model
+			for _, variant := range chipModel.Variants {
+				if variant.VariantKey == string(deviceType) {
+					// Found the variant, check if base model is supported
+					baseConfigKey := api.DeviceType(chipModel.ConfigKey)
+					for _, dt := range model.SupportedDevices {
+						if dt == baseConfigKey {
+							return true
+						}
+					}
+					return false
+				}
+			}
+		}
+	}
+	
 	return false
 }
 

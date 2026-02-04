@@ -146,7 +146,8 @@ func (h *Handler) downloadModelStreaming(ctx context.Context, modelName, modelID
 		return "", fmt.Errorf("download failed: %w", err)
 	}
 	
-	logger.Info("Model %s downloaded successfully to %s", modelName, modelPath)
+	// Use Debug level since client will display success via SSE complete message
+	logger.Debug("Model %s downloaded successfully to %s", modelName, modelPath)
 	return modelPath, nil
 }
 

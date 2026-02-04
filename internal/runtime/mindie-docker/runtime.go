@@ -168,7 +168,8 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 
 	// Select device sandbox based on device type by querying all registered sandboxes
 	var sandbox MindIESandbox
-	deviceType := string(params.Devices[0].Type)
+	// Use ConfigKey (base model) for sandbox selection, not Type (which may be variant_key)
+	deviceType := params.Devices[0].ConfigKey
 	
 	// Try each registered sandbox until we find one that supports this device type
 	for _, sandboxConstructor := range sandboxRegistry {
