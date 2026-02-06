@@ -40,6 +40,9 @@ type ExtSandbox struct {
 	// deviceType is the device config_key from devices.yaml (e.g., "kunlun-r200")
 	deviceType string
 
+	// engineName is the inference engine this sandbox is for (e.g., "vllm", "mindie")
+	engineName string
+
 	// conf contains the parsed configuration from sandboxes.yaml
 	conf *config.ExtSandboxConfig
 }
@@ -65,9 +68,10 @@ var devicePathPattern = regexp.MustCompile(`(\d+)$`)
 //	    // ... other fields
 //	}
 //	sandbox := runtime.NewExtSandbox("kunlun-r200", cfg)
-func NewExtSandbox(deviceType string, conf *config.ExtSandboxConfig) DeviceSandbox {
+func NewExtSandbox(deviceType string, engineName string, conf *config.ExtSandboxConfig) DeviceSandbox {
 	return &ExtSandbox{
 		deviceType: deviceType,
+		engineName: engineName,
 		conf:       conf,
 	}
 }
@@ -299,9 +303,13 @@ func (s *ExtSandbox) GetCapabilities() []string {
 //   - Empty string (image selection handled by runtime)
 //   - Error indicating this method is not supported
 func (s *ExtSandbox) GetDefaultImage(devices []DeviceInfo) (string, error) {
-	// Image selection is handled by runtime_images.yaml configuration
-	// ExtSandbox does not need to provide image information
-	return "", fmt.Errorf("GetDefaultImage not implemented for ext sandbox %s", s.deviceType)
+	// Load runtime images configuration
+	runtimeImages, err := config.LoadRuntimeImagesConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to load runtime images config: %w", err)
+	}
+	
+	return GetImageForEngine(runtimeImages, devices, s.engineName)
 }
 
 // GetDockerRuntime returns the Docker runtime to use for this device.
@@ -426,10 +434,11 @@ func LoadExtendedSandboxes(engineName string) []func() DeviceSandbox {
 	for deviceType, sandboxConfig := range extConfigs {
 		// Capture loop variables for closure
 		dt := deviceType
+		eng := engineName
 		cfg := sandboxConfig
 
 		sandboxes = append(sandboxes, func() DeviceSandbox {
-			return NewExtSandbox(dt, cfg)
+			return NewExtSandbox(dt, eng, cfg)
 		})
 
 		logger.Info("Loaded extended sandbox for %s: %s", engineName, deviceType)
