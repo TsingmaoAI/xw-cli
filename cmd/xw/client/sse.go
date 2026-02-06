@@ -172,7 +172,6 @@ func (c *Client) processSSEStream(body interface{ Read([]byte) (int, error) }, p
 
 		case "complete":
 			// Download completed successfully
-			logger.Info("Download completed: %s", msg.Message)
 			finalResponse = &api.PullResponse{
 				Status:   msg.Status,
 				Progress: 100,
