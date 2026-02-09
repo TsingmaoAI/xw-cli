@@ -88,7 +88,7 @@ type Runtime struct {
 //	    return nil, fmt.Errorf("failed to initialize MLGuider runtime: %w", err)
 //	}
 func NewRuntime() (*Runtime, error) {
-	base, err := runtime.NewDockerRuntimeBase("mlguider-docker")
+	base, err := runtime.NewDockerRuntimeBase("mlguider:docker")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
@@ -496,9 +496,9 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 //   - Container labeling and filtering
 //   - Logging and monitoring
 //
-// Returns: "mlguider-docker"
+// Returns: "mlguider:docker"
 func (r *Runtime) Name() string {
-	return "mlguider-docker"
+	return "mlguider:docker"
 }
 
 // ensureMLGuiderModelDir creates the MLGuider converted model directory if it doesn't exist.

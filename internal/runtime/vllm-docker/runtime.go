@@ -53,7 +53,7 @@ type Runtime struct {
 //   - Configured runtime instance ready for use
 //   - Error if Docker is unavailable or initialization fails
 func NewRuntime() (*Runtime, error) {
-	base, err := runtime.NewDockerRuntimeBase("vllm-docker")
+	base, err := runtime.NewDockerRuntimeBase("vllm:docker")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
@@ -92,9 +92,9 @@ func NewRuntime() (*Runtime, error) {
 // Name returns the unique identifier for this runtime.
 //
 // Returns:
-//   - "vllm-docker" to distinguish from other implementations
+//   - "vllm:docker" to distinguish from other implementations
 func (r *Runtime) Name() string {
-	return "vllm-docker"
+	return "vllm:docker"
 }
 
 // Create creates a new model instance but does not start it.

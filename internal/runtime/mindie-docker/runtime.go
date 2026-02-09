@@ -61,7 +61,7 @@ type Runtime struct {
 //   - Configured runtime instance ready for use
 //   - Error if Docker is unavailable or initialization fails
 func NewRuntime() (*Runtime, error) {
-	base, err := runtime.NewDockerRuntimeBase("mindie-docker")
+	base, err := runtime.NewDockerRuntimeBase("mindie:docker")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
@@ -99,9 +99,9 @@ func NewRuntime() (*Runtime, error) {
 // Name returns the unique identifier for this runtime.
 //
 // Returns:
-//   - "mindie-docker" to distinguish from other implementations
+//   - "mindie:docker" to distinguish from other implementations
 func (r *Runtime) Name() string {
-	return "mindie-docker"
+	return "mindie:docker"
 }
 
 // Create creates a new model instance but does not start it.

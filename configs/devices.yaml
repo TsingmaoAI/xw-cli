@@ -159,7 +159,7 @@ vendors:
               - SYS_RAWIO
               - IPC_LOCK
               - SYS_RESOURCE
-
+      
       # Ascend 310P (Dual-chip card)
       - config_key: ascend-310p
         model_name: Ascend 310P

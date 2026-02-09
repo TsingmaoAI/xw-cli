@@ -25,7 +25,7 @@ import (
 // to ensure all containers can be discovered and managed consistently.
 //
 // Common labels added automatically:
-//   - xw.runtime: Runtime type (e.g., "vllm-docker", "mindie-docker")
+//   - xw.runtime: Runtime type (e.g., "vllm:docker", "mindie:docker")
 //   - xw.model_id: Model identifier
 //   - xw.alias: Instance alias for inference
 //   - xw.instance_id: Unique instance identifier
@@ -109,7 +109,7 @@ type DockerRuntimeBase struct {
 	mu         sync.RWMutex            // Protects instances map and serverName
 	instances  map[string]*Instance    // Active instances indexed by ID
 	serverName string                  // Server identifier for multi-server deployments
-	runtimeName string                 // Runtime type name (e.g., "vllm-docker", "mindie-docker")
+	runtimeName string                 // Runtime type name (e.g., "vllm:docker", "mindie:docker")
 	
 	// Unified sandbox management (configuration-first design)
 	// Extended sandboxes (from config) have higher priority than core sandboxes (code)
@@ -138,7 +138,7 @@ type DockerRuntimeBase struct {
 //   - Error if Docker daemon is unreachable or client creation fails
 //
 // Example:
-//   base, err := NewDockerRuntimeBase("vllm-docker")
+//   base, err := NewDockerRuntimeBase("vllm:docker")
 //   if err != nil {
 //       return nil, fmt.Errorf("failed to initialize: %w", err)
 //   }
@@ -290,15 +290,15 @@ func (b *DockerRuntimeBase) SelectSandbox(deviceType string) (DeviceSandbox, err
 // even under concurrent access. Loading is deferred until first sandbox
 // selection to avoid timing issues with configuration file initialization.
 //
-// The method extracts the engine name from the runtime name (e.g., "vllm-docker" -> "vllm")
+// The method extracts the engine name from the runtime name (e.g., "vllm:docker" -> "vllm")
 // and loads corresponding sandbox configurations from devices.yaml.
 //
 // Thread Safety: Safe for concurrent calls (protected by sync.Once)
 func (b *DockerRuntimeBase) loadExtendedSandboxes() {
 	b.sandboxOnce.Do(func() {
-		// Extract engine name from runtime name (e.g., "vllm-docker" -> "vllm")
+		// Extract engine name from runtime name (e.g., "vllm:docker" -> "vllm", "omni-infer:docker" -> "omni-infer")
 		engineName := b.runtimeName
-		if idx := strings.Index(engineName, "-"); idx > 0 {
+		if idx := strings.Index(engineName, ":"); idx > 0 {
 			engineName = engineName[:idx]
 		}
 		
@@ -1429,7 +1429,7 @@ func PullDockerImage(ctx context.Context, imageName string, eventCh chan<- strin
 //
 // This method combines CheckDockerImageExists and PullDockerImage to ensure
 // a Docker image is available before creating containers. It's designed to be
-// called by concrete runtime implementations (vllm-docker, mindie-docker) in
+// called by concrete runtime implementations (vllm:docker, mindie:docker) in
 // their Create methods.
 //
 // The method sends progress events through the CreateParams.EventChannel:

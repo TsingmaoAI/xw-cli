@@ -97,12 +97,9 @@ func parseEngine(engine string) (BackendOption, error) {
 	backendType := api.BackendType(parts[0])
 	deploymentMode := api.DeploymentMode(parts[1])
 	
-	// Validate backend type
-	switch backendType {
-	case api.BackendTypeVLLM, api.BackendTypeMindIE, api.BackendTypeMLGuider:
-		// Valid backend
-	default:
-		return BackendOption{}, fmt.Errorf("unknown backend type: %s", backendType)
+	// Validate backend type (only check non-empty, actual availability checked at runtime)
+	if backendType == "" {
+		return BackendOption{}, fmt.Errorf("backend type cannot be empty")
 	}
 	
 	// Validate deployment mode

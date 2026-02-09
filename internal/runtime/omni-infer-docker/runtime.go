@@ -8,7 +8,7 @@
 //
 // Omni-Infer Features:
 //   - Optimized for Ascend NPU inference
-//   - Uses host networking for optimal performance
+//   - Bridge networking with port mapping (supports multiple instances)
 //   - Large shared memory support (500GB default)
 //   - Simple API interface
 //
@@ -24,6 +24,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 	"github.com/tsingmaoai/xw-cli/internal/runtime"
@@ -38,7 +39,7 @@ import (
 //   - Embeds DockerRuntimeBase for common Docker operations
 //   - Uses DeviceSandbox abstraction for device-specific configuration
 //   - Implements Create() for Omni-Infer-specific container setup
-//   - Uses host networking for optimal performance
+//   - Uses bridge networking with port mapping for multi-instance support
 //
 // Thread Safety:
 //   All public methods are thread-safe via inherited mutex protection.
@@ -57,7 +58,7 @@ type Runtime struct {
 //   - Configured runtime instance ready for use
 //   - Error if Docker is unavailable or initialization fails
 func NewRuntime() (*Runtime, error) {
-	base, err := runtime.NewDockerRuntimeBase("omni-infer-docker")
+	base, err := runtime.NewDockerRuntimeBase("omni-infer:docker")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
@@ -86,9 +87,9 @@ func NewRuntime() (*Runtime, error) {
 // Name returns the unique identifier for this runtime.
 //
 // Returns:
-//   - "omni-infer-docker" to distinguish from other implementations
+//   - "omni-infer:docker" to distinguish from other implementations
 func (r *Runtime) Name() string {
-	return "omni-infer-docker"
+	return "omni-infer:docker"
 }
 
 // Create creates a new model instance but does not start it.
@@ -187,17 +188,31 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		env["MAX_MODEL_LEN"] = fmt.Sprintf("%d", maxLen)
 	}
 
-	// SERVER_PORT: HTTP server port
-	if params.Port > 0 {
-		env["SERVER_PORT"] = fmt.Sprintf("%d", params.Port)
-	} else {
-		env["SERVER_PORT"] = "8000"
-	}
+	// SERVER_PORT: Fixed to 8000 inside container (will be mapped to host port)
+	// Omni-Infer will listen on port 8000 inside container
+	env["SERVER_PORT"] = "8000"
 
 	// Convert environment map to slice
 	envSlice := make([]string, 0, len(env))
 	for k, v := range env {
 		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Configure port mapping for inference API
+	// Container listens on 8000, map it to host port specified in params.Port
+	exposedPorts := nat.PortSet{}
+	portBindings := nat.PortMap{}
+
+	if params.Port > 0 {
+		// Map container port 8000 to host port
+		containerPort := nat.Port("8000/tcp")
+		exposedPorts[containerPort] = struct{}{}
+		portBindings[containerPort] = []nat.PortBinding{
+			{
+				HostIP:   "127.0.0.1", // Bind to localhost only for security
+				HostPort: fmt.Sprintf("%d", params.Port),
+			},
+		}
 	}
 
 	// Get device mounts from sandbox
@@ -258,8 +273,9 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 
 	// Prepare container configuration
 	containerConfig := &container.Config{
-		Image: imageName,
-		Env:   envSlice,
+		Image:        imageName,
+		Env:          envSlice,
+		ExposedPorts: exposedPorts, // Expose port 8000 for API access
 		Labels: map[string]string{
 			"xw.instance_id": params.InstanceID,
 			"xw.model_id":    params.ModelID,
@@ -268,15 +284,16 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 
 	// Prepare host configuration
 	hostConfig := &container.HostConfig{
-		Mounts:      mounts,
-		Resources:   container.Resources{Devices: deviceMappings},
-		ShmSize:     shmSize,
-		Privileged:  sandbox.RequiresPrivileged(),
-		CapAdd:      sandbox.GetCapabilities(),
-		Runtime:     sandbox.GetDockerRuntime(),
-		NetworkMode: container.NetworkMode("host"), // Use host networking
+		Mounts:       mounts,
+		Resources:    container.Resources{Devices: deviceMappings},
+		ShmSize:      shmSize,
+		Privileged:   sandbox.RequiresPrivileged(),
+		CapAdd:       sandbox.GetCapabilities(),
+		Runtime:      sandbox.GetDockerRuntime(),
+		PortBindings: portBindings, // Map container port 8000 to host port
+		NetworkMode:  "bridge",     // Use bridge network for port mapping
 		RestartPolicy: container.RestartPolicy{
-			Name: "unless-stopped",
+			Name: "no", // No auto-restart, instance lifecycle managed by xw server
 		},
 		Init: func() *bool { b := true; return &b }(), // Enable init for proper signal handling
 	}

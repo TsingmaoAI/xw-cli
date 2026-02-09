@@ -22,6 +22,9 @@ const (
 	
 	// BackendTypeMLGuider is MLGuider high-performance inference engine for large language models
 	BackendTypeMLGuider BackendType = "mlguider"
+	
+	// BackendTypeOmniInfer is Omni-Infer inference engine optimized for Ascend chips
+	BackendTypeOmniInfer BackendType = "omni-infer"
 )
 
 // DeploymentMode represents how a backend can be deployed

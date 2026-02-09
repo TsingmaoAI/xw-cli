@@ -545,8 +545,8 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 	
 	// No existing instance with this alias - create new one
 	// Determine runtime name from backend type + deployment mode
-	// Format: "{backend}-{mode}", e.g., "vllm-docker", "mindie-docker"
-	runtimeName := fmt.Sprintf("%s-%s", opts.BackendType, opts.DeploymentMode)
+	// Format: "{backend}:{mode}", e.g., "vllm:docker", "omni-infer:docker"
+	runtimeName := fmt.Sprintf("%s:%s", opts.BackendType, opts.DeploymentMode)
 	
 	// Get the runtime
 	m.mu.RLock()
