@@ -48,6 +48,9 @@ vendors:
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
             amd64: NONE
+          omni-infer:
+            arm64: omniinfer-xw:latest
+            amd64: NONE
         # Extended sandbox configurations (configuration-driven device support)
         # This replaces the need for code-based AscendSandbox implementations
         ext_sandboxes:
@@ -125,7 +128,38 @@ vendors:
               - IPC_LOCK
               - SYS_RESOURCE
               - NET_ADMIN
-      
+          
+          # Omni-Infer runtime configuration for Ascend 910B
+          omni-infer:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            devices:
+              # Individual NPU devices (auto-matched by index)
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              # Common Ascend devices (always mounted)
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              # Ascend driver (read-only)
+              - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
+              # DCMI libraries (read-only)
+              - /usr/local/dcmi:/usr/local/dcmi:ro
+            privileged: true
+            runtime: runc
+            shm_size_gb: 500
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+
       # Ascend 310P (Dual-chip card)
       - config_key: ascend-310p
         model_name: Ascend 310P

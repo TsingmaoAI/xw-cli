@@ -8,6 +8,7 @@ import (
 	"github.com/tsingmaoai/xw-cli/internal/runtime"
 	mindiedocker "github.com/tsingmaoai/xw-cli/internal/runtime/mindie-docker"
 	mlguiderdocker "github.com/tsingmaoai/xw-cli/internal/runtime/mlguider-docker"
+	omniinferdocker "github.com/tsingmaoai/xw-cli/internal/runtime/omni-infer-docker"
 	vllmdocker "github.com/tsingmaoai/xw-cli/internal/runtime/vllm-docker"
 )
 
@@ -86,6 +87,18 @@ func InitializeRuntimeManager() (*runtime.Manager, error) {
 	} else {
 		if err := mgr.RegisterRuntime(rt); err != nil {
 			logger.Warn("Failed to register MLGuider Docker runtime: %v", err)
+		} else {
+			registeredCount++
+			logger.Info("Registered runtime: %s", rt.Name())
+		}
+	}
+	
+	// Register Omni-Infer Docker runtime
+	if rt, err := omniinferdocker.NewRuntime(); err != nil {
+		logger.Warn("Omni-Infer Docker runtime unavailable: %v", err)
+	} else {
+		if err := mgr.RegisterRuntime(rt); err != nil {
+			logger.Warn("Failed to register Omni-Infer Docker runtime: %v", err)
 		} else {
 			registeredCount++
 			logger.Info("Registered runtime: %s", rt.Name())
