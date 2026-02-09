@@ -97,6 +97,10 @@ xw ps
       <img src="images/wx_6.jpg" width="200px" alt="微信群6"/><br/>
       <sub><b>微信群 6</b></sub>
     </td>
+        <td align="center">
+      <img src="images/wx_7.jpg" width="200px" alt="微信群7"/><br/>
+      <sub><b>微信群 7</b></sub>
+    </td>
   </tr>
 </table>
 
