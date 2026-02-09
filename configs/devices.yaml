@@ -48,6 +48,83 @@ vendors:
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
             amd64: NONE
+        # Extended sandbox configurations (configuration-driven device support)
+        # This replaces the need for code-based AscendSandbox implementations
+        ext_sandboxes:
+          # vLLM runtime configuration for Ascend 910B
+          vllm:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            environment:
+              ASCEND_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"  # Will be overridden by device_env
+              ASCEND_SLOG_PRINT_TO_STDOUT: "1"
+              ASCEND_GLOBAL_LOG_LEVEL: "3"
+            devices:
+              # Individual NPU devices (auto-matched by index)
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              # Common Ascend devices (always mounted)
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              - /usr/local/dcmi:/usr/local/dcmi
+              - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+              - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+              - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+              - /etc/ascend_install.info:/etc/ascend_install.info
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+          
+          # MindIE runtime configuration for Ascend 910B
+          mindie:
+            device_env: MINDIE_NPU_DEVICE_IDS
+            devices:
+              # Individual NPU devices (auto-matched by index)
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              # Common Ascend devices (always mounted)
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              - /usr/local/Ascend/driver:/usr/local/Ascend/driver
+              - /usr/local/Ascend/add-ons:/usr/local/Ascend/add-ons
+              - /usr/local/sbin:/usr/local/sbin
+              - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+              # MindIE-specific: extensive log directories for profiling
+              - /var/log/npu/slog:/var/log/npu/slog
+              - /var/log/npu/profiling:/var/log/npu/profiling
+              - /var/log/npu/dump:/var/log/npu/dump
+              - /var/log/npu:/usr/slog
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
       
       # Ascend 310P (Dual-chip card)
       - config_key: ascend-310p
@@ -73,6 +150,112 @@ vendors:
           mlguider:
             arm64: harbor.tsingmao.com/xw-cli/mlguider:0123-310p-arm64
             amd64: NONE
+        # Extended sandbox configurations for Ascend 310P
+        ext_sandboxes:
+          # vLLM runtime configuration for Ascend 310P
+          vllm:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            environment:
+              ASCEND_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+              ASCEND_SLOG_PRINT_TO_STDOUT: "1"
+              ASCEND_GLOBAL_LOG_LEVEL: "3"
+            devices:
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              - /usr/local/dcmi:/usr/local/dcmi
+              - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+              - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+              - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+              - /etc/ascend_install.info:/etc/ascend_install.info
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+          
+          # MindIE runtime configuration for Ascend 310P
+          mindie:
+            device_env: MINDIE_NPU_DEVICE_IDS
+            devices:
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              - /usr/local/Ascend/driver:/usr/local/Ascend/driver
+              - /usr/local/Ascend/add-ons:/usr/local/Ascend/add-ons
+              - /usr/local/sbin:/usr/local/sbin
+              - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+              - /var/log/npu/slog:/var/log/npu/slog
+              - /var/log/npu/profiling:/var/log/npu/profiling
+              - /var/log/npu/dump:/var/log/npu/dump
+              - /var/log/npu:/usr/slog
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
+          
+          # MLGuider runtime configuration for Ascend 310P
+          mlguider:
+            device_env: MINDIE_NPU_DEVICE_IDS
+            devices:
+              - /dev/davinci0
+              - /dev/davinci1
+              - /dev/davinci2
+              - /dev/davinci3
+              - /dev/davinci4
+              - /dev/davinci5
+              - /dev/davinci6
+              - /dev/davinci7
+              - /dev/davinci_manager
+              - /dev/devmm_svm
+              - /dev/hisi_hdc
+            volumes:
+              - /usr/local/Ascend/driver:/usr/local/Ascend/driver
+              - /usr/local/Ascend/add-ons:/usr/local/Ascend/add-ons
+              - /usr/local/sbin:/usr/local/sbin
+              - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+              - /var/log/npu/slog:/var/log/npu/slog
+              - /var/log/npu/profiling:/var/log/npu/profiling
+              - /var/log/npu/dump:/var/log/npu/dump
+              - /var/log/npu:/usr/slog
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
 
   - vendor_name: Metax
     vendor_id: "0x9999"
@@ -93,6 +276,33 @@ vendors:
           mlguider:
             arm64: NONE
             amd64: NONE
+        # Extended sandbox configurations for MetaX C550
+        ext_sandboxes:
+          # vLLM runtime configuration for MetaX C550
+          vllm:
+            device_env: CUDA_VISIBLE_DEVICES
+            environment:
+              VLLM_WORKER_MULTIPROC_METHOD: spawn
+            devices:
+              # MetaX uses DRI interface (GPU-like access pattern)
+              - /dev/dri
+              # MetaX control device
+              - /dev/mxcd
+              # InfiniBand for multi-device communication
+              - /dev/infiniband
+            volumes:
+              # System libraries and MetaX runtime
+              - /usr/local:/usr/local
+              # Cache directory for model downloads
+              - /root/.cache:/root/.cache
+            privileged: true
+            runtime: runc
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
     
 # Notes:
 # - config_key: Unique identifier used in runtime configuration and model definitions

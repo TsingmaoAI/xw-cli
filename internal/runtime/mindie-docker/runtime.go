@@ -66,11 +66,18 @@ func NewRuntime() (*Runtime, error) {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
 
-	// Register core sandboxes for mainstream accelerators
-	// Extended sandboxes from configuration will be loaded automatically when needed
-	base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{
-		func() runtime.DeviceSandbox { return NewAscendSandbox() },
-	})
+	// CONFIGURATION-DRIVEN STRATEGY: All device sandboxes now loaded from devices.yaml
+	// Core sandboxes are kept for reference but not registered (commented out below)
+	// This allows configuration-only upgrades without recompiling binaries
+	//
+	// Legacy core sandbox registration (DISABLED):
+	// base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{
+	// 	func() runtime.DeviceSandbox { return NewAscendSandbox() },
+	// })
+	//
+	// New approach: Extended sandboxes from devices.yaml take precedence
+	// All device configurations (Ascend, etc.) are now in configs/devices.yaml
+	base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{})
 
 	rt := &Runtime{
 		DockerRuntimeBase: base,
@@ -84,7 +91,7 @@ func NewRuntime() (*Runtime, error) {
 		logger.Warn("Failed to load existing MindIE containers: %v", err)
 	}
 
-	logger.Info("MindIE Docker runtime initialized successfully")
+	logger.Info("MindIE Docker runtime initialized successfully (config-driven mode)")
 
 	return rt, nil
 }
