@@ -16,9 +16,77 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 
-	"github.com/tsingmaoai/xw-cli/internal/config"
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 )
+
+// CreateContainerWithLabels creates a Docker container with automatic common label injection.
+//
+// This method wraps Docker's ContainerCreate API and automatically adds common xw labels
+// to ensure all containers can be discovered and managed consistently.
+//
+// Common labels added automatically:
+//   - xw.runtime: Runtime type (e.g., "vllm-docker", "mindie-docker")
+//   - xw.model_id: Model identifier
+//   - xw.alias: Instance alias for inference
+//   - xw.instance_id: Unique instance identifier
+//   - xw.backend_type: Backend type (e.g., "vllm", "mindie")
+//   - xw.deployment_mode: Deployment mode (e.g., "docker")
+//   - xw.server_name: Server identifier for multi-server support
+//   - xw.max_concurrent: Max concurrent requests (if specified in ExtraConfig)
+//
+// Runtime-specific labels can be passed via the extraLabels parameter.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout
+//   - params: Creation parameters containing model info and configuration
+//   - containerConfig: Docker container configuration
+//   - hostConfig: Docker host configuration
+//   - containerName: Name for the container
+//   - extraLabels: Additional runtime-specific labels (optional)
+//
+// Returns:
+//   - Container creation response with ID
+//   - Error if container creation fails
+func (b *DockerRuntimeBase) CreateContainerWithLabels(
+	ctx context.Context,
+	params *CreateParams,
+	containerConfig *container.Config,
+	hostConfig *container.HostConfig,
+	containerName string,
+	extraLabels map[string]string,
+) (container.CreateResponse, error) {
+	// Prepare common labels
+	commonLabels := map[string]string{
+		"xw.runtime":         b.runtimeName,
+		"xw.model_id":        params.ModelID,
+		"xw.alias":           params.Alias,
+		"xw.instance_id":     params.InstanceID,
+		"xw.backend_type":    params.BackendType,
+		"xw.deployment_mode": params.DeploymentMode,
+		"xw.server_name":     params.ServerName,
+	}
+	
+	// Add max_concurrent label if specified (used by proxy for concurrency control)
+	if maxConcurrent, ok := params.ExtraConfig["max_concurrent"].(int); ok && maxConcurrent > 0 {
+		commonLabels["xw.max_concurrent"] = fmt.Sprintf("%d", maxConcurrent)
+	}
+	
+	// Merge common labels with extra labels (extra labels can override if needed)
+	if containerConfig.Labels == nil {
+		containerConfig.Labels = make(map[string]string)
+	}
+	
+	for k, v := range commonLabels {
+		containerConfig.Labels[k] = v
+	}
+	
+	for k, v := range extraLabels {
+		containerConfig.Labels[k] = v
+	}
+	
+	// Create container via Docker API
+	return b.client.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
+}
 
 // DockerRuntimeBase provides common Docker operations for runtime implementations.
 //
@@ -42,6 +110,13 @@ type DockerRuntimeBase struct {
 	instances  map[string]*Instance    // Active instances indexed by ID
 	serverName string                  // Server identifier for multi-server deployments
 	runtimeName string                 // Runtime type name (e.g., "vllm-docker", "mindie-docker")
+	
+	// Unified sandbox management (configuration-first design)
+	// Extended sandboxes (from config) have higher priority than core sandboxes (code)
+	// This allows users to override default implementations via configuration
+	coreSandboxes []func() DeviceSandbox  // Core sandboxes registered by runtime
+	extSandboxes  []func() DeviceSandbox  // Extended sandboxes loaded from config
+	sandboxOnce   sync.Once               // Ensures extended sandboxes loaded once
 }
 
 // NewDockerRuntimeBase creates and initializes a new Docker runtime base.
@@ -131,6 +206,109 @@ func (b *DockerRuntimeBase) GetServerName() string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.serverName
+}
+
+// RegisterCoreSandboxes registers core device sandboxes for this runtime.
+//
+// This method should be called during runtime initialization to register
+// code-based sandbox implementations for mainstream accelerators.
+//
+// Core sandboxes serve as fallbacks when no configuration-based sandboxes
+// are found for a device type. This design allows users to override default
+// implementations via configuration.
+//
+// Parameters:
+//   - sandboxes: List of sandbox constructor functions
+//
+// Thread Safety: Should be called during initialization before concurrent access
+//
+// Example:
+//
+//	base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{
+//	    func() runtime.DeviceSandbox { return NewAscendSandbox() },
+//	    func() runtime.DeviceSandbox { return NewMetaXSandbox() },
+//	})
+func (b *DockerRuntimeBase) RegisterCoreSandboxes(sandboxes []func() DeviceSandbox) {
+	b.coreSandboxes = sandboxes
+	logger.Debug("Registered %d core sandbox(es) for %s", len(sandboxes), b.runtimeName)
+}
+
+// SelectSandbox selects an appropriate sandbox for the given device type.
+//
+// This method implements a configuration-first selection strategy:
+//  1. Check extended sandboxes from configuration (higher priority)
+//  2. Fall back to core sandboxes from code (lower priority)
+//
+// Extended sandboxes are loaded lazily on first call to avoid timing issues
+// with configuration file loading.
+//
+// Parameters:
+//   - deviceType: Device config_key to find sandbox for (e.g., "ascend-910b")
+//
+// Returns:
+//   - DeviceSandbox instance if found
+//   - Error if no sandbox supports the device type
+//
+// Thread Safety: Safe for concurrent calls
+//
+// Example:
+//
+//	sandbox, err := base.SelectSandbox("ascend-910b")
+//	if err != nil {
+//	    return fmt.Errorf("no sandbox for device: %w", err)
+//	}
+func (b *DockerRuntimeBase) SelectSandbox(deviceType string) (DeviceSandbox, error) {
+	// Lazy load extended sandboxes from configuration
+	b.loadExtendedSandboxes()
+	
+	// Priority 1: Try extended sandboxes from configuration
+	// These have higher priority as they represent explicit user configuration
+	for _, constructor := range b.extSandboxes {
+		sb := constructor()
+		if sb.Supports(deviceType) {
+			logger.Debug("Selected extended sandbox for %s: %T", deviceType, sb)
+			return sb, nil
+		}
+	}
+	
+	// Priority 2: Fall back to core sandboxes from code
+	// These are default implementations for mainstream accelerators
+	for _, constructor := range b.coreSandboxes {
+		sb := constructor()
+		if sb.Supports(deviceType) {
+			logger.Debug("Selected core sandbox for %s: %T", deviceType, sb)
+			return sb, nil
+		}
+	}
+	
+	return nil, fmt.Errorf("no sandbox found for device type: %s", deviceType)
+}
+
+// loadExtendedSandboxes loads extended sandboxes from device configuration.
+//
+// This method uses sync.Once to ensure sandboxes are only loaded once,
+// even under concurrent access. Loading is deferred until first sandbox
+// selection to avoid timing issues with configuration file initialization.
+//
+// The method extracts the engine name from the runtime name (e.g., "vllm-docker" -> "vllm")
+// and loads corresponding sandbox configurations from devices.yaml.
+//
+// Thread Safety: Safe for concurrent calls (protected by sync.Once)
+func (b *DockerRuntimeBase) loadExtendedSandboxes() {
+	b.sandboxOnce.Do(func() {
+		// Extract engine name from runtime name (e.g., "vllm-docker" -> "vllm")
+		engineName := b.runtimeName
+		if idx := strings.Index(engineName, "-"); idx > 0 {
+			engineName = engineName[:idx]
+		}
+		
+		// Load extended sandboxes for this engine
+		b.extSandboxes = LoadExtendedSandboxes(engineName)
+		
+		if len(b.extSandboxes) > 0 {
+			logger.Info("Loaded %d extended sandbox(es) for %s", len(b.extSandboxes), b.runtimeName)
+		}
+	})
 }
 
 // Start starts a created Docker container instance.
@@ -371,16 +549,92 @@ func (b *DockerRuntimeBase) updateInstanceStateFromContainer(ctx context.Context
 //
 // Thread Safety: Safe for concurrent calls
 func (b *DockerRuntimeBase) List(ctx context.Context) ([]*Instance, error) {
-	b.mu.RLock()
-	instancesList := make([]*Instance, 0, len(b.instances))
-	for _, inst := range b.instances {
-		instancesList = append(instancesList, inst)
+	// Query Docker directly for all containers with our runtime label
+	// This ensures we always return the latest state without relying on memory cache
+	containers, err := b.client.ContainerList(ctx, container.ListOptions{
+		All: true, // Include stopped containers
+		Filters: filters.NewArgs(
+			filters.Arg("label", fmt.Sprintf("xw.runtime=%s", b.runtimeName)),
+		),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
-	b.mu.RUnlock()
 
-	// Check actual container status for each instance
-	for _, inst := range instancesList {
-		b.updateInstanceStateFromContainer(ctx, inst)
+	instancesList := make([]*Instance, 0, len(containers))
+	
+	for _, c := range containers {
+		instanceID := c.Labels["xw.instance_id"]
+		if instanceID == "" {
+			continue
+		}
+
+		// Filter by server name if configured (for multi-server support)
+		if b.serverName != "" {
+			containerServerName := c.Labels["xw.server_name"]
+			if containerServerName != b.serverName {
+				continue
+			}
+		}
+
+		// Inspect container to get detailed state
+		stateInfo, err := InspectContainerState(ctx, b.client, c.ID)
+		if err != nil {
+			logger.Debug("Failed to inspect container %s during list: %v", c.ID[:12], err)
+			stateInfo = &ContainerStateInfo{
+				State:        StateUnknown,
+				ErrorMessage: fmt.Sprintf("Failed to inspect: %v", err),
+			}
+		}
+
+		// Extract port mapping
+		port := 0
+		for _, portMapping := range c.Ports {
+			if portMapping.PrivatePort == 8000 {
+				port = int(portMapping.PublicPort)
+				break
+			}
+		}
+
+		// Convert timestamps
+		createdAt := time.Unix(c.Created, 0)
+		startedAt := createdAt
+		if stateInfo.IsRunning {
+			if inspectData, err := b.client.ContainerInspect(ctx, c.ID); err == nil {
+				if inspectData.State != nil && inspectData.State.StartedAt != "" {
+					if parsedTime, err := time.Parse(time.RFC3339Nano, inspectData.State.StartedAt); err == nil {
+						startedAt = parsedTime
+					}
+				}
+			}
+		}
+
+		// Build instance from container info
+		metadata := map[string]string{
+			"container_id":    c.ID,
+			"backend_type":    c.Labels["xw.backend_type"],
+			"deployment_mode": c.Labels["xw.deployment_mode"],
+		}
+		
+		// Copy max_concurrent from label if present
+		if maxConcurrent := c.Labels["xw.max_concurrent"]; maxConcurrent != "" {
+			metadata["max_concurrent"] = maxConcurrent
+		}
+
+		instance := &Instance{
+			ID:          instanceID,
+			RuntimeName: b.runtimeName,
+			ModelID:     c.Labels["xw.model_id"],
+			Alias:       c.Labels["xw.alias"],
+			State:       stateInfo.State,
+			Port:        port,
+			CreatedAt:   createdAt,
+			StartedAt:   startedAt,
+			Metadata:    metadata,
+			Error:       stateInfo.ErrorMessage,
+		}
+
+		instancesList = append(instancesList, instance)
 	}
 
 	return instancesList, nil
@@ -931,16 +1185,11 @@ func GetImageForEngine(configMap map[string]map[string]map[string]string, device
 		return "", fmt.Errorf("no devices provided")
 	}
 	
-	// Get chip model name from first device
-	chipModelName := devices[0].ModelName
-	if chipModelName == "" {
-		return "", fmt.Errorf("device model name is empty")
-	}
-	
-	// Map chip model name to configuration key using config package
-	configKey, err := config.GetConfigKeyByModelName(chipModelName)
-	if err != nil {
-		return "", fmt.Errorf("failed to get config key: %w", err)
+	// Use ConfigKey directly (base model config key for image lookup)
+	// ConfigKey is always the base model key, not variant_key
+	configKey := devices[0].ConfigKey
+	if configKey == "" {
+		return "", fmt.Errorf("device config key is empty")
 	}
 	
 	// Get image for this chip model and engine (auto-detect architecture)
@@ -965,7 +1214,7 @@ func GetImageForEngine(configMap map[string]map[string]map[string]string, device
 		return "", fmt.Errorf("architecture %s not found for chip model %s and engine %s", arch, configKey, engineName)
 	}
 	
-	logger.Debug("Selected image for %s (%s): %s", chipModelName, engineName, image)
+	logger.Debug("Selected image for %s (%s): %s", configKey, engineName, image)
 	return image, nil
 }
 

@@ -250,6 +250,7 @@ func (m *Manager) Create(ctx context.Context, runtimeName string, params *Create
 				PCIAddress: dev.BusAddress,
 				ModelName:  dev.ModelName,
 				ConfigKey:  dev.ConfigKey,
+				VariantKey: dev.VariantKey,
 				Properties: dev.Properties,
 			}
 		}
@@ -602,6 +603,7 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 				PCIAddress: dev.BusAddress,
 				ModelName:  dev.ModelName,
 				ConfigKey:  dev.ConfigKey,
+				VariantKey: dev.VariantKey,
 				Properties: dev.Properties,
 			})
 		}
@@ -619,13 +621,15 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 	
 	// Get template parameters based on chip + model + backend
 	// Template name format: {chip_config_key}_{model_id}_{backend_name}
-	// If devices not specified, query available devices to determine chip type
+	// Priority: Use VariantKey if available (for variant-specific params), otherwise ConfigKey
 	var templateParams []string
 	var chipConfigKey string
+	var chipVariantKey string
 	
 	if len(devices) > 0 {
 		// Use specified device's chip type
 		chipConfigKey = devices[0].ConfigKey
+		chipVariantKey = devices[0].VariantKey
 	} else {
 		// Query first available device to determine chip type for template lookup
 		allocator, err := m.getOrCreateAllocator(configDir)
@@ -633,16 +637,31 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 			allDevices := allocator.GetAllDevices()
 			if len(allDevices) > 0 {
 				chipConfigKey = allDevices[0].ConfigKey
+				chipVariantKey = allDevices[0].VariantKey
 			}
 		}
 	}
 	
 	if chipConfigKey != "" {
 		backendName := opts.BackendType // Use backend name without mode (e.g., "vllm", not "vllm:docker")
-		templateParams = config.GetTemplateParams(m.runtimeParamsConfig, chipConfigKey, opts.ModelID, backendName)
+		
+		// Try variant-specific template first, fallback to base model template
+		lookupKey := chipVariantKey
+		if lookupKey == "" {
+			lookupKey = chipConfigKey
+		}
+		
+		templateParams = config.GetTemplateParams(m.runtimeParamsConfig, lookupKey, opts.ModelID, backendName)
+		
+		// If no variant-specific template found and we have a variant, try base model template
+		if len(templateParams) == 0 && chipVariantKey != "" && chipVariantKey != chipConfigKey {
+			logger.Debug("No variant-specific template for %s, trying base model %s", chipVariantKey, chipConfigKey)
+			templateParams = config.GetTemplateParams(m.runtimeParamsConfig, chipConfigKey, opts.ModelID, backendName)
+		}
+		
 		if len(templateParams) > 0 {
 			logger.Info("Applied runtime template: %s_%s_%s with %d parameter(s)", 
-				chipConfigKey, opts.ModelID, backendName, len(templateParams))
+				lookupKey, opts.ModelID, backendName, len(templateParams))
 		}
 	}
 	

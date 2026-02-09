@@ -8,57 +8,6 @@
 version: "1.0"
 
 models:
-  # Qwen2 0.5B
-  - model_id: qwen2-0.5b
-    source_id: qwen/Qwen2-0.5B
-    
-    # Model specifications
-    parameters: 0.5
-    context_length: 32768
-    
-    # Deployment configuration (device -> engines mapping)
-    supported_devices:
-      ascend-910b:
-        - vllm:docker
-        - mindie:docker
-    
-    tag: main
-    capabilities:
-      - completion
-
-  # Qwen2 7B
-  - model_id: qwen2-7b
-    source_id: qwen/Qwen2-7B
-    
-    # Model specifications
-    parameters: 7.0
-    context_length: 131072
-    
-    # Deployment configuration (device -> engines mapping)
-    supported_devices:
-      ascend-910b:
-        - vllm:docker
-        - mindie:docker
-    
-    capabilities:
-      - completion
-
-  # Qwen2 72B
-  - model_id: qwen2-72b
-    source_id: qwen/Qwen2-72B
-    
-    # Model specifications
-    parameters: 72.0
-    context_length: 131072
-    
-    # Deployment configuration (device -> engines mapping)
-    supported_devices:
-      ascend-910b:
-        - vllm:docker
-        - mindie:docker
-    
-    capabilities:
-      - completion
 
   # Qwen2.5 7B Instruct
   - model_id: qwen2.5-7b-instruct
@@ -73,6 +22,12 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+      ascend-310p:
+        - vllm:docker
+        - mindie:docker
+        - mlguider:docker
+      metax-c550:
+        - vllm:docker
 
     capabilities:
       - completion
@@ -511,6 +466,23 @@ models:
 
     capabilities:
       - completion
+
+  # - Qwen3-Coder-Next-80B-A3B Instruct
+  - model_id: qwen3-coder-next
+    source_id: Qwen/Qwen3-Coder-Next
+
+    # Model specifications
+    parameters: 80.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-310p:
+        - mlguider:docker
+    capabilities:
+      - completion
+      - coding
+      - tool_use
 
 # Notes:
 # - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")

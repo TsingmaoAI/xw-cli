@@ -148,13 +148,30 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 	
 	for _, device := range devices {
 		// Lookup chip from configuration using pre-loaded config
-		vendor, model := config.FindChipModelByIdentifier(devConfig, device.VendorID, device.DeviceID)
+		// Include subsystem_device_id for more precise chip variant matching
+		vendor, model, variant := config.FindChipModelByIdentifier(devConfig, device.VendorID, device.DeviceID, device.SubsystemDeviceID)
 		if vendor == nil || model == nil {
 			// Not a known AI chip in configuration
 			continue
 		}
 		
-		deviceType := string(model.ConfigKey)
+		// Prepare keys and names
+		// - configKey: Always use base model config_key (for sandbox, image lookup)
+		// - variantKey: Use variant_key if matched (for runtime_params, display)
+		// - deviceType: Use base config_key (unified TYPE for all variants)
+		// - modelName: Add variant in parentheses if matched (e.g., "Ascend 910B (910B1)")
+		configKey := model.ConfigKey  // Base model config_key
+		variantKey := ""
+		modelName := model.ModelName
+		deviceType := configKey  // Always use base config_key for TYPE column
+		
+		if variant != nil {
+			variantKey = variant.VariantKey
+			if variant.VariantName != "" {
+				// Add variant name in parentheses for display
+				modelName = fmt.Sprintf("%s (%s)", model.ModelName, variant.VariantName)
+			}
+		}
 		
 		// Get current physical device index for this device type
 		physicalIdx := physicalDeviceCount[deviceType]
@@ -173,9 +190,10 @@ func FindAIChips() (map[string][]DetectedChip, error) {
 				VendorID:            device.VendorID,
 				DeviceID:            device.DeviceID,
 				BusAddress:          device.BusAddress,
-				ModelName:           model.ModelName,
-				ConfigKey:           model.ConfigKey,
-				DeviceType:          api.DeviceType(model.ConfigKey),
+				ModelName:           modelName,                  // Display name with variant
+				ConfigKey:           configKey,                  // Base model config_key
+				VariantKey:          variantKey,                 // Variant key (empty if no variant)
+				DeviceType:          api.DeviceType(deviceType), // Variant key or base config_key
 				Generation:          model.Generation,
 				Capabilities:        model.Capabilities,
 				PhysicalDeviceIndex: physicalIdx,
@@ -204,10 +222,15 @@ type DetectedChip struct {
 	// ModelName is the chip model name
 	ModelName string `json:"model_name"`
 	
-	// ConfigKey is the key used in runtime configuration
+	// ConfigKey is the base model config key (e.g., "ascend-910b")
+	// Used for sandbox selection and image lookup
 	ConfigKey string `json:"config_key"`
 	
-	// DeviceType is the xw device type
+	// VariantKey is the specific variant key if matched (e.g., "ascend-910b1")
+	// Used for runtime_params matching, empty if no variant matched
+	VariantKey string `json:"variant_key,omitempty"`
+	
+	// DeviceType is the xw device type (same as VariantKey if variant matched, otherwise ConfigKey)
 	DeviceType api.DeviceType `json:"device_type"`
 	
 	// Generation is the chip generation

@@ -138,19 +138,30 @@ func LookupChipModelByPCIID(vendorID, deviceID string) (*ChipModelInfo, error) {
 	}
 	
 	// Search for matching chip model
-	vendor, model := FindChipModelByIdentifier(devConfig, vendorID, deviceID)
+	// Pass empty subsystemDeviceID for backward compatibility (will match configs without subsystem_device_id)
+	vendor, model, variant := FindChipModelByIdentifier(devConfig, vendorID, deviceID, "")
 	if vendor == nil || model == nil {
 		// Not found
 		return nil, nil
+	}
+	
+	// Use variant config if matched
+	configKey := model.ConfigKey
+	modelName := model.ModelName
+	if variant != nil {
+		configKey = variant.VariantKey
+		if variant.VariantName != "" {
+			modelName = model.ModelName + " " + variant.VariantName
+		}
 	}
 	
 	// Convert to ChipModelInfo format
 	chipModel := &ChipModelInfo{
 		VendorID:     vendor.VendorID,
 		DeviceID:     model.DeviceID,
-		ModelName:    model.ModelName,
-		ConfigKey:    model.ConfigKey,
-		DeviceType:   api.DeviceType(model.ConfigKey),
+		ModelName:    modelName,    // Use variant name if matched
+		ConfigKey:    configKey,    // Use variant key if matched
+		DeviceType:   api.DeviceType(configKey),
 		Generation:   model.Generation,
 		Capabilities: model.Capabilities,
 	}

@@ -53,8 +53,9 @@ type Runtime struct {
 //
 // This function:
 //   1. Initializes Docker base with "mindie-docker" runtime name
-//   2. Verifies Docker daemon connectivity
-//   3. Loads any existing containers from previous runs
+//   2. Registers core sandbox implementations
+//   3. Verifies Docker daemon connectivity
+//   4. Loads any existing containers from previous runs
 //
 // Returns:
 //   - Configured runtime instance ready for use
@@ -64,6 +65,19 @@ func NewRuntime() (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Docker base: %w", err)
 	}
+
+	// CONFIGURATION-DRIVEN STRATEGY: All device sandboxes now loaded from devices.yaml
+	// Core sandboxes are kept for reference but not registered (commented out below)
+	// This allows configuration-only upgrades without recompiling binaries
+	//
+	// Legacy core sandbox registration (DISABLED):
+	// base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{
+	// 	func() runtime.DeviceSandbox { return NewAscendSandbox() },
+	// })
+	//
+	// New approach: Extended sandboxes from devices.yaml take precedence
+	// All device configurations (Ascend, etc.) are now in configs/devices.yaml
+	base.RegisterCoreSandboxes([]func() runtime.DeviceSandbox{})
 
 	rt := &Runtime{
 		DockerRuntimeBase: base,
@@ -77,7 +91,7 @@ func NewRuntime() (*Runtime, error) {
 		logger.Warn("Failed to load existing MindIE containers: %v", err)
 	}
 
-	logger.Info("MindIE Docker runtime initialized successfully")
+	logger.Info("MindIE Docker runtime initialized successfully (config-driven mode)")
 
 	return rt, nil
 }
@@ -166,22 +180,13 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		return nil, fmt.Errorf("at least one device is required")
 	}
 
-	// Select device sandbox based on device type by querying all registered sandboxes
-	var sandbox MindIESandbox
-	deviceType := string(params.Devices[0].Type)
-	
-	// Try each registered sandbox until we find one that supports this device type
-	for _, sandboxConstructor := range sandboxRegistry {
-		sb := sandboxConstructor()
-		if sb.Supports(deviceType) {
-			sandbox = sb
-			logger.Debug("Selected sandbox for device type %s: %T", deviceType, sandbox)
-			break
-		}
-	}
-	
-	if sandbox == nil {
-		return nil, fmt.Errorf("no sandbox found for device type: %s", deviceType)
+	// Select device sandbox using unified selection logic from base
+	// This automatically handles configuration-first priority: extended sandboxes (config) > core sandboxes (code)
+	// Use ConfigKey (base model) for sandbox selection, not Type (which may be variant_key)
+	deviceType := params.Devices[0].ConfigKey
+	sandbox, err := r.SelectSandbox(deviceType)
+	if err != nil {
+		return nil, err
 	}
 
 	// Prepare sandbox-specific environment variables
@@ -301,18 +306,6 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		deviceIndicesStr = strings.Join(indices, ",")
 	}
 
-	// Prepare container labels for discovery and filtering
-	labels := map[string]string{
-		"xw.runtime":         r.Name(),
-		"xw.model_id":        params.ModelID,
-		"xw.alias":           params.Alias,
-		"xw.instance_id":     params.InstanceID,
-		"xw.backend_type":    params.BackendType,
-		"xw.deployment_mode": params.DeploymentMode,
-		"xw.device_indices":  deviceIndicesStr,
-		"xw.server_name":     params.ServerName,
-	}
-
 	// Build container configuration
 	containerConfig := &container.Config{
 		Image:        imageName,
@@ -322,7 +315,6 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		Tty:          false,
 		OpenStdin:    true,  // Enable interactive mode for debugging
 		AttachStdin:  true,  // Attach stdin for interactive shells
-		Labels:       labels,
 	}
 
 	// Get device-specific device mounts (e.g., /dev/davinci0)
@@ -396,16 +388,13 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		containerName = fmt.Sprintf("%s-%s", params.InstanceID, params.ServerName)
 	}
 
-	// Create the container via Docker API
-	cli := r.GetDockerClient()
-	resp, err := cli.ContainerCreate(
-		ctx,
-		containerConfig,
-		hostConfig,
-		nil, // Network config (use default)
-		nil, // Platform config (use default)
-		containerName,
-	)
+	// Prepare MindIE-specific labels
+	extraLabels := map[string]string{
+		"xw.device_indices": deviceIndicesStr,
+	}
+
+	// Create the container via base method (automatically adds common labels)
+	resp, err := r.CreateContainerWithLabels(ctx, params, containerConfig, hostConfig, containerName, extraLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -468,12 +457,6 @@ type MindIESandbox interface {
 	// Returns:
 	//   - true if this sandbox supports the device type
 	Supports(deviceType string) bool
-}
-
-// sandboxRegistry holds all registered sandbox implementations
-var sandboxRegistry = []func() MindIESandbox{
-	func() MindIESandbox { return NewAscendSandbox() },
-	// Add more sandbox constructors here as new chips are supported
 }
 
 // isWritableMount determines if a mount path requires write access.

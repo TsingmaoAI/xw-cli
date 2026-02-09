@@ -1,0 +1,52 @@
+# NVIDIA T4 Extended Sandbox Configuration Example
+#
+# This example shows how to add T4 GPU support using extended sandbox.
+# Copy this section to your /etc/xw/devices.yaml under 'vendors:' array
+
+  - vendor_name: NVIDIA
+    vendor_id: "0x10de"
+    
+    chip_models:
+      - config_key: nvidia-t4
+        model_name: Tesla T4
+        device_id: "0x1eb8"
+        generation: Tesla T4
+        
+        runtime_images:
+          vllm:
+            amd64: vllm/vllm-openai:latest
+            arm64: NONE
+        
+        # Extended sandbox configuration for vLLM
+        ext_sandboxes:
+          vllm:
+            # Device visibility environment variable (automatically set to "0,1,2,...")
+            device_env: CUDA_VISIBLE_DEVICES
+            
+            # Static environment variables
+            environment:
+              NVIDIA_VISIBLE_DEVICES: all
+              NVIDIA_DRIVER_CAPABILITIES: compute,utility
+            
+            # Device nodes to mount
+            # Indexed devices (with numbers): mounted only if that GPU is allocated
+            # Shared devices (no numbers): always mounted
+            devices:
+              - /dev/nvidia0
+              - /dev/nvidia1
+              - /dev/nvidia2
+              - /dev/nvidia3
+              - /dev/nvidiactl      # shared device
+              - /dev/nvidia-uvm     # shared device
+              - /dev/nvidia-uvm-tools
+            
+            # Volume mounts (host:container[:ro])
+            volumes:
+              - /usr/local/cuda:/usr/local/cuda:ro
+            
+            # Container settings
+            privileged: false
+            runtime: nvidia        # requires nvidia-docker2
+            shm_size_gb: 32        # shared memory size
+            capabilities: []
+

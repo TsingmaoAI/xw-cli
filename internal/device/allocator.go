@@ -22,7 +22,8 @@ type DeviceInfo struct {
 	Index      int               `json:"index"`        // Device index (0-based)
 	BusAddress string            `json:"bus_address"`  // PCI bus address
 	ModelName  string            `json:"model_name"`   // Device model name
-	ConfigKey  string            `json:"config_key"`   // Configuration key for runtime_images.yaml
+	ConfigKey  string            `json:"config_key"`   // Base model config key (for sandbox, image lookup)
+	VariantKey string            `json:"variant_key,omitempty"` // Specific variant key (for runtime_params)
 	Properties map[string]string `json:"properties"`   // Additional properties
 }
 
@@ -144,6 +145,7 @@ func NewAllocator() (*Allocator, error) {
 				BusAddress: chip.BusAddress,
 				ModelName:  chip.ModelName,
 				ConfigKey:  chip.ConfigKey,
+				VariantKey: chip.VariantKey,
 				Properties: map[string]string{
 					"generation":            chip.Generation,
 					"vendor_id":             chip.VendorID,

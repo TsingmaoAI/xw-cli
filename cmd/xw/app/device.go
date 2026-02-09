@@ -69,8 +69,8 @@ func newDeviceListCommand(globalOpts *GlobalOptions) *cobra.Command {
 			}
 			
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "CHIP KEY\tCHIP\tCHIP#\tPCI ADDRESS\tVENDOR:DEVICE")
-			fmt.Fprintln(w, "--------\t----\t-----\t-----------\t-------------")
+			fmt.Fprintln(w, "CHIP KEY\tCHIP\t#\tPCI ADDRESS\tVENDOR:DEVICE")
+			fmt.Fprintln(w, "--------\t----\t-\t-----------\t-------------")
 			
 			for _, device := range devices {
 				pciID := fmt.Sprintf("%s:%s", device.VendorID, device.DeviceID)
