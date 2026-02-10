@@ -18,7 +18,8 @@ const (
 
 // ServerIdentity represents the server's unique identity
 type ServerIdentity struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	Registry string `json:"registry"`
 }
 
 // GenerateServerName generates a random 6-character server name
@@ -43,12 +44,32 @@ func (c *Config) GetOrCreateServerIdentity() (*ServerIdentity, error) {
 	// Check if server.conf exists
 	if _, err := os.Stat(confPath); err == nil {
 		// File exists, read it
-		return c.readServerIdentity(confPath)
+		identity, err := c.readServerIdentity(confPath)
+		if err != nil {
+			return nil, err
+		}
+		
+		// Check if registry is missing and add it
+		needsUpdate := false
+		if identity.Registry == "" {
+			identity.Registry = DefaultRegistry
+			needsUpdate = true
+		}
+		
+		// Update file if needed
+		if needsUpdate {
+			if err := c.writeServerIdentity(confPath, identity); err != nil {
+				return nil, fmt.Errorf("failed to update server identity: %w", err)
+			}
+		}
+		
+		return identity, nil
 	}
 	
 	// File doesn't exist, create new identity
 	identity := &ServerIdentity{
-		Name: GenerateServerName(),
+		Name:     GenerateServerName(),
+		Registry: DefaultRegistry,
 	}
 	
 	// Write to file
@@ -86,6 +107,8 @@ func (c *Config) readServerIdentity(path string) (*ServerIdentity, error) {
 		
 		if key == "name" {
 			identity.Name = value
+		} else if key == "registry" {
+			identity.Registry = value
 		}
 	}
 	
@@ -98,8 +121,30 @@ func (c *Config) readServerIdentity(path string) (*ServerIdentity, error) {
 
 // writeServerIdentity writes server identity to file
 func (c *Config) writeServerIdentity(path string, identity *ServerIdentity) error {
-	content := fmt.Sprintf("# XW Server Identity\n# Do not modify this file unless you know what you are doing\nname=%s\n", identity.Name)
+	content := fmt.Sprintf("# XW Server Configuration\n# Do not modify this file unless you know what you are doing\n\n# Server instance unique identifier\nname=%s\n\n# Configuration package registry URL\nregistry=%s\n", identity.Name, identity.Registry)
 	
 	return os.WriteFile(path, []byte(content), 0644)
+}
+
+// LoadServerConfig loads server configuration from server.conf
+func (c *Config) LoadServerConfig() error {
+	identity, err := c.GetOrCreateServerIdentity()
+	if err != nil {
+		return err
+	}
+	
+	c.Server.Name = identity.Name
+	c.Server.Registry = identity.Registry
+	return nil
+}
+
+// SaveServerConfig saves current server configuration to server.conf
+func (c *Config) SaveServerConfig() error {
+	confPath := filepath.Join(c.Storage.DataDir, ServerConfFileName)
+	identity := &ServerIdentity{
+		Name:     c.Server.Name,
+		Registry: c.Server.Registry,
+	}
+	return c.writeServerIdentity(confPath, identity)
 }
 

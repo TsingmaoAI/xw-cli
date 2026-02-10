@@ -14,7 +14,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Version and build info
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-0.0.1}"
+CONFIG_VERSION="${CONFIG_VERSION:-v0.0.1}"
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date -u '+%Y%m%d')
 
@@ -73,10 +74,15 @@ create_package_structure() {
     # Copy systemd service
     cp "${PROJECT_DIR}/systemd/xw-server.service" "${pkg_dir}/systemd/"
     
-    # Copy configuration files
-    cp "${PROJECT_DIR}/configs/devices.yaml" "${pkg_dir}/configs/"
-    cp "${PROJECT_DIR}/configs/models.yaml" "${pkg_dir}/configs/"
-    cp "${PROJECT_DIR}/configs/runtime_params.yaml" "${pkg_dir}/configs/"
+    # Copy configuration files from versioned directory
+    if [ -d "${PROJECT_DIR}/configs/${CONFIG_VERSION}" ]; then
+        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/devices.yaml" "${pkg_dir}/configs/"
+        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/models.yaml" "${pkg_dir}/configs/"
+        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/runtime_params.yaml" "${pkg_dir}/configs/"
+    else
+        print_error "Configuration version ${CONFIG_VERSION} not found in configs/"
+        exit 1
+    fi
     
     # Copy scripts
     cp "${PROJECT_DIR}/scripts/install.sh" "${pkg_dir}/scripts/"
@@ -346,6 +352,43 @@ EOF
     print_info "✓ DEB package created"
 }
 
+# Create configuration package (without packages.json)
+create_config_package() {
+    local config_version=$1
+    
+    print_info "Creating configuration package for ${config_version}..."
+    
+    # Check if config version exists
+    if [ ! -d "${PROJECT_DIR}/configs/${config_version}" ]; then
+        print_error "Configuration version ${config_version} not found"
+        return 1
+    fi
+    
+    local pkg_name="${config_version}"
+    
+    # Copy entire configuration directory (without packages.json)
+    cp -r "${PROJECT_DIR}/configs/${config_version}" "${PACKAGE_DIR}/"
+    
+    # Create tarball
+    print_info "Creating config tarball..."
+    cd "$PACKAGE_DIR"
+    tar -czf "${pkg_name}.tar.gz" "$pkg_name"
+    cd - > /dev/null
+    
+    # Calculate checksum
+    cd "$PACKAGE_DIR"
+    sha256sum "${pkg_name}.tar.gz" | awk '{print $1}' > "${pkg_name}.tar.gz.sha256"
+    cd - > /dev/null
+    
+    local checksum=$(cat "${PACKAGE_DIR}/${pkg_name}.tar.gz.sha256")
+    
+    print_info "✓ Config package created: ${PACKAGE_DIR}/${pkg_name}.tar.gz"
+    print_info "✓ SHA256: ${checksum}"
+    
+    # Clean up extracted directory
+    rm -rf "$pkg_dir"
+}
+
 # Main packaging process
 main() {
     echo "==============================================="
@@ -378,6 +421,10 @@ main() {
             print_warn "Binary not found for ${arch}, skipping"
         fi
     done
+    
+    # Create standalone configuration package
+    create_config_package "${CONFIG_VERSION}"
+    echo ""
     
     # Show results
     echo "==============================================="

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://xw.tsingmao.com/schema/packages.json",
+  "name": "xw-config-packages",
+  "description": "XW CLI configuration package registry",
+  "updated_at": "2026-02-10T00:00:00Z",
+  "packages": [
+    {
+      "version": "v0.0.1",
+      "name": "v0.0.1",
+      "description": "Initial configuration version with Ascend 910B/310P and MetaX C550 support",
+      "release_date": "2026-02-10",
+      "download_url": "https://xw.tsingmao.com/packages/v0.0.1.tar.gz",
+      "sha256": "",
+      "min_xw_version": "0.0.1"
+    }
+  ]
+}
+

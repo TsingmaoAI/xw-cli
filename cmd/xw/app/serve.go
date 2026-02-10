@@ -137,6 +137,10 @@ func runServe(opts *ServeOptions) error {
 	if err != nil {
 		return fmt.Errorf("failed to get server identity: %w", err)
 	}
+	
+	// Update server config with identity
+	cfg.Server.Name = identity.Name
+	cfg.Server.Registry = identity.Registry
 	logger.Info("Server identity: %s", identity.Name)
 	
 	// Load configurations from config directory

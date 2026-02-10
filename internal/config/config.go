@@ -24,6 +24,9 @@ const (
 	// Port 11581 is used as it doesn't require root privileges.
 	DefaultServerPort = 11581
 
+	// DefaultRegistry is the default configuration package registry URL.
+	DefaultRegistry = "https://xw.tsingmao.com/packages.json"
+
 	// DefaultConfigDirName is the default configuration directory name.
 	// This directory is created in the user's home directory.
 	DefaultConfigDirName = ".xw"
@@ -56,6 +59,12 @@ type Config struct {
 // This configuration controls how the xw server listens for incoming
 // HTTP connections from CLI clients or other API consumers.
 type ServerConfig struct {
+	// Name is the unique identifier for this server instance.
+	Name string `json:"name"`
+
+	// Registry is the configuration package registry URL.
+	Registry string `json:"registry"`
+
 	// Host is the server host address (e.g., "localhost", "0.0.0.0").
 	// Using "localhost" restricts access to local clients only.
 	// Using "0.0.0.0" allows access from any network interface.
