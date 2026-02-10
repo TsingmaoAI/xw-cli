@@ -230,7 +230,6 @@ func runConfigInfo(opts *ConfigOptions) error {
 
 	// Display configuration in formatted output
 	fmt.Println("Server Configuration:")
-	fmt.Println("=====================")
 	fmt.Printf("Name:           %s\n", config.Name)
 	fmt.Printf("Registry:       %s\n", config.Registry)
 	fmt.Printf("Config Version: %s\n", config.ConfigVersion)

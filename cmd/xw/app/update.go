@@ -135,7 +135,6 @@ func listVersions(c *client.Client) error {
 	}
 
 	fmt.Println("Available Configuration Versions:")
-	fmt.Println("=====================")
 	fmt.Printf("Current xw version: %s\n", resp.CurrentXwVersion)
 	fmt.Printf("Current config: %s", resp.CurrentConfigVersion)
 	
