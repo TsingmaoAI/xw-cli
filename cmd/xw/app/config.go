@@ -231,12 +231,13 @@ func runConfigInfo(opts *ConfigOptions) error {
 	// Display configuration in formatted output
 	fmt.Println("Server Configuration:")
 	fmt.Println("=====================")
-	fmt.Printf("Name:       %s\n", config.Name)
-	fmt.Printf("Registry:   %s\n", config.Registry)
-	fmt.Printf("Host:       %s\n", config.Host)
-	fmt.Printf("Port:       %d\n", config.Port)
-	fmt.Printf("Config Dir: %s\n", config.ConfigDir)
-	fmt.Printf("Data Dir:   %s\n", config.DataDir)
+	fmt.Printf("Name:           %s\n", config.Name)
+	fmt.Printf("Registry:       %s\n", config.Registry)
+	fmt.Printf("Config Version: %s\n", config.ConfigVersion)
+	fmt.Printf("Host:           %s\n", config.Host)
+	fmt.Printf("Port:           %d\n", config.Port)
+	fmt.Printf("Config Dir:     %s\n", config.ConfigDir)
+	fmt.Printf("Data Dir:       %s\n", config.DataDir)
 
 	return nil
 }

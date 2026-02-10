@@ -6,12 +6,13 @@ package client
 
 // ConfigInfo represents the server configuration information response.
 type ConfigInfo struct {
-	Name      string `json:"name"`
-	Registry  string `json:"registry"`
-	Host      string `json:"host"`
-	Port      int    `json:"port"`
-	ConfigDir string `json:"config_dir"`
-	DataDir   string `json:"data_dir"`
+	Name          string `json:"name"`
+	Registry      string `json:"registry"`
+	ConfigVersion string `json:"config_version"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	ConfigDir     string `json:"config_dir"`
+	DataDir       string `json:"data_dir"`
 }
 
 // ConfigSetRequest represents the request body for setting configuration.

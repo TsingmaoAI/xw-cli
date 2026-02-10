@@ -20,6 +20,9 @@ type ConfigInfoResponse struct {
 	// Registry is the URL to the configuration package registry.
 	Registry string `json:"registry"`
 
+	// ConfigVersion is the currently active configuration version.
+	ConfigVersion string `json:"config_version"`
+
 	// Host is the server host address.
 	Host string `json:"host"`
 
@@ -96,13 +99,22 @@ func (h *Handler) ConfigInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get current config version
+	identity, err := h.config.GetOrCreateServerIdentity()
+	if err != nil {
+		logger.Error("Failed to get server identity: %v", err)
+		h.WriteError(w, "failed to get server identity", http.StatusInternalServerError)
+		return
+	}
+
 	response := ConfigInfoResponse{
-		Name:      h.config.Server.Name,
-		Registry:  h.config.Server.Registry,
-		Host:      h.config.Server.Host,
-		Port:      h.config.Server.Port,
-		ConfigDir: h.config.Storage.ConfigDir,
-		DataDir:   h.config.Storage.DataDir,
+		Name:          h.config.Server.Name,
+		Registry:      h.config.Server.Registry,
+		ConfigVersion: identity.ConfigVersion,
+		Host:          h.config.Server.Host,
+		Port:          h.config.Server.Port,
+		ConfigDir:     h.config.Storage.ConfigDir,
+		DataDir:       h.config.Storage.DataDir,
 	}
 
 	h.WriteJSON(w, response, http.StatusOK)
