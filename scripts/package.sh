@@ -79,9 +79,9 @@ create_package_structure() {
         cp "${PROJECT_DIR}/configs/${VERSION}/models.yaml" "${pkg_dir}/configs/"
         cp "${PROJECT_DIR}/configs/${VERSION}/runtime_params.yaml" "${pkg_dir}/configs/"
     else
-        print_error "Configuration version ${VERSION} not found in configs/"
-        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')"
-        print_error "Binary version and config version must match. Please create configs/${VERSION}/ directory."
+        print_error "Configuration version ${VERSION} not found in configs/" >&2
+        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')" >&2
+        print_error "Binary version and config version must match. Please create configs/${VERSION}/ directory." >&2
         exit 1
     fi
     
@@ -361,8 +361,8 @@ create_config_package() {
     
     # Check if config version exists
     if [ ! -d "${PROJECT_DIR}/configs/${config_version}" ]; then
-        print_error "Configuration version ${config_version} not found in configs/"
-        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')"
+        print_error "Configuration version ${config_version} not found in configs/" >&2
+        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')" >&2
         return 1
     fi
     
