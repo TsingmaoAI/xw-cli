@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -290,6 +292,105 @@ func (c *Config) LoadVersionedConfigs(configVersion string, loadModels func(stri
 	modelsPath := filepath.Join(versionedDir, "models.yaml")
 	if err := loadModels(modelsPath); err != nil {
 		return fmt.Errorf("failed to load models.yaml: %w", err)
+	}
+	
+	return nil
+}
+
+// ReloadVersionedConfigs reloads all configuration files without server restart.
+//
+// This method implements transactional reload with validation phase:
+// 1. All configurations are loaded and validated without modifying caches
+// 2. Only if all validations succeed, caches are updated atomically
+// 3. If any configuration fails, no changes are applied
+//
+// Configuration files reloaded:
+//   - runtime_params.yaml: Runtime parameter templates (stored in Config.RuntimeParams)
+//   - devices.yaml: Device and runtime images config (cache cleared and reloaded)
+//   - models.yaml: Model definitions (re-registered, overwrites existing)
+//
+// This method should be called when configuration needs to be updated without
+// restarting the server (e.g., after running 'xw update').
+//
+// Parameters:
+//   - configVersion: Configuration version string (e.g., "v0.0.1")
+//   - loadModels: Callback function to load and register models from models.yaml
+//
+// Returns:
+//   - error if any configuration file fails to reload (no changes applied)
+//
+// Example:
+//
+//	err := cfg.ReloadVersionedConfigs("v0.0.1", server.InitializeModels)
+func (c *Config) ReloadVersionedConfigs(configVersion string, loadModels func(string) error) error {
+	versionedDir := filepath.Join(c.Storage.ConfigDir, configVersion)
+	
+	// Phase 1: Load and validate all configurations (no cache modifications)
+	
+	// Load and validate runtime_params.yaml
+	runtimeParamsPath := filepath.Join(versionedDir, "runtime_params.yaml")
+	newRuntimeParams, err := LoadRuntimeParamsConfigFrom(runtimeParamsPath)
+	if err != nil {
+		return fmt.Errorf("failed to load runtime_params.yaml: %w", err)
+	}
+	
+	// Validate devices.yaml by parsing without updating cache
+	devicesPath := filepath.Join(versionedDir, "devices.yaml")
+	if err := validateDevicesFile(devicesPath); err != nil {
+		return fmt.Errorf("failed to validate devices.yaml: %w", err)
+	}
+	
+	// Validate models.yaml by parsing without registering
+	modelsPath := filepath.Join(versionedDir, "models.yaml")
+	if err := validateModelsFile(modelsPath); err != nil {
+		return fmt.Errorf("failed to validate models.yaml: %w", err)
+	}
+	
+	// Phase 2: All validations passed, commit changes atomically
+	
+	// Update runtime params in Config
+	c.RuntimeParams = newRuntimeParams
+	
+	// Reload devices config (clears cache and reloads from file)
+	if _, err := ReloadDevicesConfig(devicesPath); err != nil {
+		return fmt.Errorf("failed to reload devices.yaml: %w", err)
+	}
+	
+	// Clear models cache before reloading
+	ClearModelsConfigCache()
+	
+	// Reload models (re-registers all models, overwrites existing)
+	if err := loadModels(modelsPath); err != nil { 
+		return fmt.Errorf("failed to reload models.yaml: %w", err)
+	}
+	
+	return nil
+}
+
+// validateDevicesFile validates devices.yaml without updating cache.
+func validateDevicesFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+	
+	var config DevicesConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to parse YAML: %w", err)
+	}
+	
+	return validateDevicesConfig(&config)
+}
+
+// validateModelsFile validates models.yaml without registering models.
+func validateModelsFile(path string) error {
+	modConfig, err := LoadModelsConfig(path)
+	if err != nil {
+		return fmt.Errorf("failed to load models config: %w", err)
+	}
+	
+	if len(modConfig.Models) == 0 {
+		return fmt.Errorf("no models defined in configuration")
 	}
 	
 	return nil

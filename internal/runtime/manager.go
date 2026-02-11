@@ -85,18 +85,6 @@ func (m *Manager) SetServerName(name string) {
 	}
 }
 
-// UpdateRuntimeParams updates the runtime parameters configuration.
-// This is called when configuration is reloaded without server restart.
-func (m *Manager) UpdateRuntimeParams(runtimeParams *config.RuntimeParamsConfig) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	
-	if runtimeParams != nil {
-		m.runtimeParamsConfig = runtimeParams
-		logger.Info("Runtime parameters updated")
-	}
-}
-	
 // getOrCreateAllocator gets the device allocator, creating it if necessary.
 // This is called internally when devices need to be allocated.
 // The allocator now queries Docker directly for device allocations instead of using a state file.

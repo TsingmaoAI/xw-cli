@@ -333,17 +333,12 @@ func (h *Handler) ConfigReload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reload all versioned configs
+	// Reload all versioned configs (clears all caches and reloads)
 	logger.Info("Reloading configurations for version: %s", identity.ConfigVersion)
-	if err := h.config.LoadVersionedConfigs(identity.ConfigVersion, InitializeModels); err != nil {
+	if err := h.config.ReloadVersionedConfigs(identity.ConfigVersion, h.loadModelsFunc); err != nil {
 		logger.Error("Failed to reload configurations: %v", err)
 		h.WriteError(w, fmt.Sprintf("failed to reload configurations: %v", err), http.StatusInternalServerError)
 		return
-	}
-
-	// Update runtime manager with new runtime params
-	if h.runtimeManager != nil {
-		h.runtimeManager.UpdateRuntimeParams(h.config.RuntimeParams)
 	}
 
 	logger.Info("Configuration reloaded successfully")

@@ -211,11 +211,18 @@ func performUpdate(c *client.Client, targetVersion string) error {
 
 	fmt.Printf("\n✓ %s\n", resp.Message)
 
+	// Auto-reload configuration after update
 	if resp.RestartRequired {
-		fmt.Println("\n⚠ Please reload or restart the server to apply changes:")
-		fmt.Println("  xw reload")
-		fmt.Println("  or restart manually:")
-		fmt.Println("  sudo systemctl restart xw-server")
+		fmt.Println("\n⟳ Reloading configuration...")
+		if err := c.ReloadConfig(); err != nil {
+			fmt.Printf("⚠ Auto-reload failed: %v\n", err)
+			fmt.Println("\nPlease reload manually:")
+			fmt.Println("  xw reload")
+			fmt.Println("  or restart the server:")
+			fmt.Println("  sudo systemctl restart xw-server")
+			return fmt.Errorf("configuration update succeeded but reload failed: %w", err)
+		}
+		fmt.Println("✓ Configuration reloaded successfully")
 	}
 
 	return nil

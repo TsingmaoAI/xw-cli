@@ -141,6 +141,7 @@ func (s *Server) Start() error {
 		s.modelRegistry,
 		s.deviceManager,
 		s.runtimeManager,
+		InitializeModels,
 		s.version,
 		s.buildTime,
 	)

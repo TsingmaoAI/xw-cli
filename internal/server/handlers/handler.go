@@ -49,6 +49,9 @@ type Handler struct {
 	// runtimeManager manages running model instances
 	runtimeManager *runtime.Manager
 
+	// loadModelsFunc is a callback to reload models from configuration
+	loadModelsFunc func(string) error
+
 	// version is the server version string for diagnostics.
 	version string
 
@@ -82,6 +85,7 @@ func NewHandler(
 	registry *models.Registry,
 	deviceMgr *device.Manager,
 	runtimeMgr *runtime.Manager,
+	loadModelsFunc func(string) error,
 	version, buildTime string,
 ) *Handler {
 	return &Handler{
@@ -89,6 +93,7 @@ func NewHandler(
 		modelRegistry:  registry,
 		deviceManager:  deviceMgr,
 		runtimeManager: runtimeMgr,
+		loadModelsFunc: loadModelsFunc,
 		version:        version,
 		buildTime:      buildTime,
 	}

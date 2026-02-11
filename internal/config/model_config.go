@@ -197,6 +197,18 @@ func GetModelsConfig() (*ModelsConfig, error) {
 	return LoadModelsConfig("")
 }
 
+// ClearModelsConfigCache clears the model configuration cache.
+//
+// This function invalidates the cached model configuration, forcing
+// the next LoadModelsConfig call to read from disk.
+func ClearModelsConfigCache() {
+	modelConfigLoader.mu.Lock()
+	modelConfigLoader.loaded = false
+	modelConfigLoader.config = nil
+	modelConfigLoader.mu.Unlock()
+	logger.Debug("Models configuration cache cleared")
+}
+
 // ReloadModelsConfig forces a reload of the model configuration.
 //
 // This method clears the cache and re-reads the configuration file.
@@ -209,11 +221,7 @@ func GetModelsConfig() (*ModelsConfig, error) {
 //   - Pointer to reloaded ModelsConfig
 //   - Error if reload fails
 func ReloadModelsConfig(configPath string) (*ModelsConfig, error) {
-	modelConfigLoader.mu.Lock()
-	modelConfigLoader.loaded = false
-	modelConfigLoader.config = nil
-	modelConfigLoader.mu.Unlock()
-	
+	ClearModelsConfigCache()
 	logger.Info("Reloading model configuration")
 	return LoadModelsConfig(configPath)
 }
