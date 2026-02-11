@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 
 # Version and build info
 VERSION="${VERSION:-0.0.1}"
-CONFIG_VERSION="${CONFIG_VERSION:-0.0.1}"
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date -u '+%Y%m%d')
 
@@ -75,12 +74,14 @@ create_package_structure() {
     cp "${PROJECT_DIR}/systemd/xw-server.service" "${pkg_dir}/systemd/"
     
     # Copy configuration files from versioned directory
-    if [ -d "${PROJECT_DIR}/configs/${CONFIG_VERSION}" ]; then
-        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/devices.yaml" "${pkg_dir}/configs/"
-        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/models.yaml" "${pkg_dir}/configs/"
-        cp "${PROJECT_DIR}/configs/${CONFIG_VERSION}/runtime_params.yaml" "${pkg_dir}/configs/"
+    if [ -d "${PROJECT_DIR}/configs/${VERSION}" ]; then
+        cp "${PROJECT_DIR}/configs/${VERSION}/devices.yaml" "${pkg_dir}/configs/"
+        cp "${PROJECT_DIR}/configs/${VERSION}/models.yaml" "${pkg_dir}/configs/"
+        cp "${PROJECT_DIR}/configs/${VERSION}/runtime_params.yaml" "${pkg_dir}/configs/"
     else
-        print_error "Configuration version ${CONFIG_VERSION} not found in configs/"
+        print_error "Configuration version ${VERSION} not found in configs/"
+        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')"
+        print_error "Binary version and config version must match. Please create configs/${VERSION}/ directory."
         exit 1
     fi
     
@@ -360,7 +361,8 @@ create_config_package() {
     
     # Check if config version exists
     if [ ! -d "${PROJECT_DIR}/configs/${config_version}" ]; then
-        print_error "Configuration version ${config_version} not found"
+        print_error "Configuration version ${config_version} not found in configs/"
+        print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')"
         return 1
     fi
     
@@ -423,7 +425,7 @@ main() {
     done
     
     # Create standalone configuration package
-    create_config_package "${CONFIG_VERSION}"
+    create_config_package "${VERSION}"
     echo ""
     
     # Show results
