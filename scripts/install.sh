@@ -177,23 +177,32 @@ create_directories() {
 install_configs() {
     print_info "Installing configuration files..."
     
-    # Check if configs already exist
-    if [ -f "$CONFIG_DIR/devices.yaml" ]; then
-        print_warn "Configuration files already exist, creating backups..."
-        cp "$CONFIG_DIR/devices.yaml" "$CONFIG_DIR/devices.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
-        cp "$CONFIG_DIR/models.yaml" "$CONFIG_DIR/models.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
-        cp "$CONFIG_DIR/runtime_params.yaml" "$CONFIG_DIR/runtime_params.yaml.backup.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+    # Find version directory in configs/
+    if [ ! -d "configs" ]; then
+        print_warn "Configuration directory not found in package, skipping"
+        return
     fi
     
-    # Install config files
-    if [ -d "configs" ]; then
-        install -m 644 configs/devices.yaml "$CONFIG_DIR/devices.yaml"
-        install -m 644 configs/models.yaml "$CONFIG_DIR/models.yaml"
-        [ -f configs/runtime_params.yaml ] && install -m 644 configs/runtime_params.yaml "$CONFIG_DIR/runtime_params.yaml"
-        print_info "✓ Configuration files installed"
-    else
-        print_warn "Configuration files not found in package, skipping"
+    # Get the version directory (should be only one version directory)
+    local version_dir=$(ls -1 configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+    
+    if [ -z "$version_dir" ]; then
+        print_error "No version directory found in configs/"
+        return 1
     fi
+    
+    print_info "Installing config version: $version_dir"
+    
+    # Check if this version already exists
+    if [ -d "$CONFIG_DIR/$version_dir" ]; then
+        print_warn "Configuration version $version_dir already exists"
+        print_info "Creating backup..."
+        mv "$CONFIG_DIR/$version_dir" "$CONFIG_DIR/${version_dir}.backup.$(date +%Y%m%d_%H%M%S)"
+    fi
+    
+    # Copy entire version directory
+    cp -r "configs/$version_dir" "$CONFIG_DIR/"
+    print_info "✓ Configuration version $version_dir installed to $CONFIG_DIR/$version_dir"
 }
 
 # Install binary

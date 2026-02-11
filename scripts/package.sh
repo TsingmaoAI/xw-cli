@@ -73,11 +73,9 @@ create_package_structure() {
     # Copy systemd service
     cp "${PROJECT_DIR}/systemd/xw-server.service" "${pkg_dir}/systemd/"
     
-    # Copy configuration files from versioned directory
+    # Copy configuration version directory
     if [ -d "${PROJECT_DIR}/configs/${VERSION}" ]; then
-        cp "${PROJECT_DIR}/configs/${VERSION}/devices.yaml" "${pkg_dir}/configs/"
-        cp "${PROJECT_DIR}/configs/${VERSION}/models.yaml" "${pkg_dir}/configs/"
-        cp "${PROJECT_DIR}/configs/${VERSION}/runtime_params.yaml" "${pkg_dir}/configs/"
+        cp -r "${PROJECT_DIR}/configs/${VERSION}" "${pkg_dir}/configs/"
     else
         print_error "Configuration version ${VERSION} not found in configs/" >&2
         print_info "Available config versions: $(ls -1 ${PROJECT_DIR}/configs/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | tr '\n' ' ')" >&2
