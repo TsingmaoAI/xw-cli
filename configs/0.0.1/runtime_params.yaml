@@ -11,11 +11,6 @@
 #   - Camel case (tensorParallel) -> TENSOR_PARALLEL
 #   - Kebab case (tensor-parallel) -> TENSOR_PARALLEL
 #
-# Special Parameters:
-#   - image=<docker_image>: Specify custom Docker image (Docker runtimes only)
-#     This overrides the default image from devices.yaml
-#     Example: image=harbor.example.com/custom/vllm:my-tag
-#
 # Configuration File Locations (in priority order):
 #   1. Path specified in LoadRuntimeParamsConfigFrom(path)
 #   2. ~/.xw/runtime_params.yaml (default)
@@ -57,8 +52,6 @@ templates:
       - server_port=8000
       - model_name=qwen3-32b
       - extra_args=
-      # Optional: Specify custom Docker image (overrides device-specific default)
-      # - image=harbor.example.com/custom/vllm-ascend:custom-tag
 
   - name: ascend-910b_qwen3-32b_mindie
     params:
@@ -435,6 +428,18 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-32b
+
+  - name: ascend-910b_glm-5_vllm
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=6000
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=glm-5
+      - extra_args=
+      # Optional: Specify custom Docker image (overrides device-specific default)
+      - image=harbor.tsingmao.com/xw-cli/vllm-ascend:glm5-arm64
 
   # Example: Ascend 910B with Qwen3 32B using vLLM
   - name: ascend-310p_qwen3-32b_vllm

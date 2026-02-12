@@ -1,10 +1,9 @@
 # XW Model Configuration
 # This file defines AI models that can be deployed and served by xw.
 #
-# Configuration File Location:
-#   - Loaded from the versioned config directory specified by --config flag
-#   - Default: ~/.xw/{version}/models.yaml
-#   - System install: /etc/xw/{version}/models.yaml (if using system-wide installation)
+# Configuration File Locations (in priority order):
+#   1. Path specified in LoadModelsConfig(path)
+#   2. /etc/xw/models.yaml (default)
 
 version: "1.0"
 
@@ -484,6 +483,20 @@ models:
       - completion
       - coding
       - tool_use
+  
+  # GLM-5
+  - model_id: glm-5
+    source_id: Eco-Tech/GLM-5-w4a8
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    capabilities:
 
 # Notes:
 # - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")
