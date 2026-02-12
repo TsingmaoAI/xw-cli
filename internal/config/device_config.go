@@ -175,31 +175,29 @@ type DeviceConfigLoader struct {
 var (
 	// deviceConfigLoader is the global singleton instance
 	deviceConfigLoader = &DeviceConfigLoader{}
-	
-	// defaultDeviceConfigPath is the default location for device configuration
-	defaultDeviceConfigPath = "/etc/xw/devices.yaml"
 )
 
-// LoadDevicesConfig loads device configuration from the default location.
+// LoadDevicesConfig returns the cached device configuration.
 //
-// This function loads the configuration from the default path: /etc/xw/devices.yaml
-// It implements a singleton pattern with caching.
+// This function is a convenience wrapper around GetDevicesConfig().
+// Configuration must be loaded first via LoadDevicesConfigFrom() during
+// server initialization (typically called from LoadVersionedConfigs).
 //
 // Returns:
 //   - Pointer to loaded DevicesConfig
-//   - Error if file cannot be read, parsed, or validated
+//   - Error if configuration not loaded yet
 //
 // Example:
 //
 //	config, err := LoadDevicesConfig()
 //	if err != nil {
-//	    log.Fatalf("Failed to load device config: %v", err)
+//	    log.Fatalf("Device config not loaded: %v", err)
 //	}
 //	for _, vendor := range config.Vendors {
 //	    fmt.Printf("Loaded vendor: %s\n", vendor.VendorName)
 //	}
 func LoadDevicesConfig() (*DevicesConfig, error) {
-	return LoadDevicesConfigFrom("")
+	return GetDevicesConfig()
 }
 
 // LoadDevicesConfigFrom loads device configuration from a specified path.
@@ -234,8 +232,7 @@ func LoadDevicesConfigFrom(configPath string) (*DevicesConfig, error) {
 	// Determine config file path
 	path := configPath
 	if path == "" {
-		path = defaultDeviceConfigPath
-		logger.Debug("Using default device config path: %s", path)
+		return nil, fmt.Errorf("config path cannot be empty - device configuration must be loaded explicitly")
 	}
 	
 	// Check if file exists
@@ -273,23 +270,21 @@ func LoadDevicesConfigFrom(configPath string) (*DevicesConfig, error) {
 // GetDevicesConfig returns the cached device configuration.
 //
 // This method provides access to the previously loaded configuration without
-// re-reading the file. If configuration hasn't been loaded yet, it loads it
-// from the default location.
+// re-reading the file. Configuration must be loaded first via LoadDevicesConfig()
+// or LoadDevicesConfigFrom() (typically done during server startup).
 //
 // Returns:
 //   - Pointer to DevicesConfig
-//   - Error if configuration not loaded and loading fails
+//   - Error if configuration not loaded yet
 func GetDevicesConfig() (*DevicesConfig, error) {
 	deviceConfigLoader.mu.RLock()
-	if deviceConfigLoader.loaded {
-		config := deviceConfigLoader.config
-		deviceConfigLoader.mu.RUnlock()
-		return config, nil
-	}
-	deviceConfigLoader.mu.RUnlock()
+	defer deviceConfigLoader.mu.RUnlock()
 	
-	// Not loaded yet, load with default path
-	return LoadDevicesConfig()
+	if !deviceConfigLoader.loaded {
+		return nil, fmt.Errorf("device configuration not loaded yet")
+	}
+	
+	return deviceConfigLoader.config, nil
 }
 
 // ReloadDevicesConfig forces a reload of the device configuration.

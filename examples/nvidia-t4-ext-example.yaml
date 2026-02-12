@@ -1,7 +1,8 @@
 # NVIDIA T4 Extended Sandbox Configuration Example
 #
 # This example shows how to add T4 GPU support using extended sandbox.
-# Copy this section to your /etc/xw/devices.yaml under 'vendors:' array
+# Copy this section to your devices.yaml file under 'vendors:' array
+# (Located at ~/.xw/{version}/devices.yaml or your custom --config directory)
 
   - vendor_name: NVIDIA
     vendor_id: "0x10de"

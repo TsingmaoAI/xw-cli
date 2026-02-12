@@ -1,9 +1,10 @@
 # XW Device Configuration
 # This file defines AI chip vendors, models, and their runtime images.
 #
-# Configuration File Locations (in priority order):
-#   1. Path specified in LoadDevicesConfigFrom(path)
-#   2. /etc/xw/devices.yaml (default)
+# Configuration File Location:
+#   - Loaded from the versioned config directory specified by --config flag
+#   - Default: ~/.xw/{version}/devices.yaml
+#   - System install: /etc/xw/{version}/devices.yaml (if using system-wide installation)
 
 version: "1.0"
 

@@ -1,9 +1,10 @@
 # XW Model Configuration
 # This file defines AI models that can be deployed and served by xw.
 #
-# Configuration File Locations (in priority order):
-#   1. Path specified in LoadModelsConfig(path)
-#   2. /etc/xw/models.yaml (default)
+# Configuration File Location:
+#   - Loaded from the versioned config directory specified by --config flag
+#   - Default: ~/.xw/{version}/models.yaml
+#   - System install: /etc/xw/{version}/models.yaml (if using system-wide installation)
 
 version: "1.0"
 

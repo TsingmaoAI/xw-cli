@@ -95,24 +95,19 @@ type ModelConfigLoader struct {
 var (
 	// modelConfigLoader is the global singleton instance
 	modelConfigLoader = &ModelConfigLoader{}
-	
-	// defaultModelConfigPath is the default location for model configuration
-	defaultModelConfigPath = "/etc/xw/models.yaml"
 )
 
 // LoadModelsConfig loads model configuration from the specified file path.
 //
 // This method reads and parses the YAML configuration file, validating the
-// structure and content. If no path is provided, it uses the default location.
+// structure and content. Configuration path must be explicitly provided
+// (typically during server initialization via LoadVersionedConfigs).
 //
 // The configuration is cached after first load. Subsequent calls return the
 // cached configuration without re-reading the file.
 //
-// Configuration File Location:
-//   - Provided configPath parameter, or default: /etc/xw/models.yaml
-//
 // Parameters:
-//   - configPath: Optional path to configuration file (empty string for default)
+//   - configPath: Path to configuration file (must not be empty)
 //
 // Returns:
 //   - Pointer to loaded ModelsConfig
@@ -120,7 +115,7 @@ var (
 //
 // Example:
 //
-//	config, err := LoadModelsConfig("")
+//	config, err := LoadModelsConfig("/root/.xw/0.0.1/models.yaml")
 //	if err != nil {
 //	    log.Fatalf("Failed to load model config: %v", err)
 //	}
@@ -137,11 +132,10 @@ func LoadModelsConfig(configPath string) (*ModelsConfig, error) {
 		return modelConfigLoader.config, nil
 	}
 	
-	// Determine config file path
+	// Require explicit config path
 	path := configPath
 	if path == "" {
-		path = defaultModelConfigPath
-		logger.Debug("Using default model config path: %s", path)
+		return nil, fmt.Errorf("config path cannot be empty - model configuration must be loaded explicitly")
 	}
 	
 	// Check if file exists
@@ -178,23 +172,21 @@ func LoadModelsConfig(configPath string) (*ModelsConfig, error) {
 // GetModelsConfig returns the cached model configuration.
 //
 // This method provides access to the previously loaded configuration without
-// re-reading the file. If configuration hasn't been loaded yet, it loads it
-// from the default location.
+// re-reading the file. Configuration must be loaded first via LoadModelsConfig()
+// during server initialization.
 //
 // Returns:
 //   - Pointer to ModelsConfig
-//   - Error if configuration not loaded and loading fails
+//   - Error if configuration not loaded yet
 func GetModelsConfig() (*ModelsConfig, error) {
 	modelConfigLoader.mu.RLock()
-	if modelConfigLoader.loaded {
-		config := modelConfigLoader.config
-		modelConfigLoader.mu.RUnlock()
-		return config, nil
-	}
-	modelConfigLoader.mu.RUnlock()
+	defer modelConfigLoader.mu.RUnlock()
 	
-	// Not loaded yet, load with default path
-	return LoadModelsConfig("")
+	if !modelConfigLoader.loaded {
+		return nil, fmt.Errorf("model configuration not loaded yet")
+	}
+	
+	return modelConfigLoader.config, nil
 }
 
 // ClearModelsConfigCache clears the model configuration cache.
