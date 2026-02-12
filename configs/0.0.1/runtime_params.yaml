@@ -11,6 +11,11 @@
 #   - Camel case (tensorParallel) -> TENSOR_PARALLEL
 #   - Kebab case (tensor-parallel) -> TENSOR_PARALLEL
 #
+# Special Parameters:
+#   - image=<docker_image>: Specify custom Docker image (Docker runtimes only)
+#     This overrides the default image from devices.yaml
+#     Example: image=harbor.example.com/custom/vllm:my-tag
+#
 # Configuration File Locations (in priority order):
 #   1. Path specified in LoadRuntimeParamsConfigFrom(path)
 #   2. ~/.xw/runtime_params.yaml (default)
@@ -52,6 +57,8 @@ templates:
       - server_port=8000
       - model_name=qwen3-32b
       - extra_args=
+      # Optional: Specify custom Docker image (overrides device-specific default)
+      # - image=harbor.example.com/custom/vllm-ascend:custom-tag
 
   - name: ascend-910b_qwen3-32b_mindie
     params:

@@ -666,6 +666,22 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 		}
 	}
 	
+	// Extract special parameters from template params
+	// image= parameter should be moved to ExtraConfig instead of being converted to env var
+	filteredTemplateParams := make([]string, 0, len(templateParams))
+	for _, param := range templateParams {
+		if strings.HasPrefix(param, "image=") {
+			// Extract image name and set it in ExtraConfig
+			imageName := strings.TrimPrefix(param, "image=")
+			extraConfig["image"] = imageName
+			logger.Info("Using custom Docker image from runtime template: %s", imageName)
+			// Don't add to filteredTemplateParams to avoid it becoming an env var
+		} else {
+			// Keep all other parameters
+			filteredTemplateParams = append(filteredTemplateParams, param)
+		}
+	}
+	
 	params := &CreateParams{
 		InstanceID:     instanceID,
 		ModelID:        opts.ModelID,
@@ -680,8 +696,8 @@ func (m *Manager) Run(configDir, dataDir string, opts *RunOptions) (*RunInstance
 		Port:           opts.Port,
 		Environment:    make(map[string]string),
 		ExtraConfig:    extraConfig,
-		TemplateParams: templateParams,      // Add template parameters
-		EventChannel:   opts.EventChannel,   // Pass event channel for progress updates
+		TemplateParams: filteredTemplateParams, // Use filtered params (image= extracted to ExtraConfig)
+		EventChannel:   opts.EventChannel,      // Pass event channel for progress updates
 	}
 
 	// Create context with timeout
