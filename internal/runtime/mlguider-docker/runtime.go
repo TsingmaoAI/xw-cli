@@ -382,12 +382,10 @@ func (r *Runtime) Create(ctx context.Context, params *runtime.CreateParams) (*ru
 		})
 	}
 
-	// Determine container name
-	// Format: {runtime}-{instance_id}-{server_name}
-	// Example: mlguider-qwen3-32b-abc123
-	containerName := fmt.Sprintf("%s-%s", r.Name(), params.InstanceID)
+	// Build container name with server suffix for multi-server support
+	containerName := params.InstanceID
 	if params.ServerName != "" {
-		containerName = fmt.Sprintf("%s-%s", containerName, params.ServerName)
+		containerName = fmt.Sprintf("%s-%s", params.InstanceID, params.ServerName)
 	}
 
 	// Create container configuration
