@@ -43,6 +43,12 @@ curl -o- http://xw.tsingmao.com/install.sh | bash
 xw serve
 ```
 
+启动后，建议执行以下命令更新最新模型支持：
+
+```bash
+xw update
+```
+
 ### 2. 拉取模型
 
 ```bash
