@@ -1,53 +1,43 @@
 // Package handlers implements HTTP request handlers for the xw server.
 //
-// This file provides a high-performance HTTP proxy that forwards OpenAI-compatible
-// API requests to underlying inference services. The proxy operates at the HTTP
-// protocol level, minimizing overhead by avoiding unnecessary request body parsing.
+// This file provides the shared proxy infrastructure used by both OpenAI and
+// Anthropic-compatible API handlers. It includes:
+//   - ProxyCore: instance lookup, concurrency management, and HTTP forwarding
+//   - concurrencyManager: semaphore-based per-instance request limiting
+//   - Header filtering utilities for hop-by-hop header removal
+//
+// API-format-specific handlers are in separate files:
+//   - proxy_openai.go:    OpenAI-compatible transparent proxy
+//   - proxy_anthropic.go: Anthropic Messages API format-converting proxy
 package handlers
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/tsingmaoai/xw-cli/internal/logger"
 	"github.com/tsingmaoai/xw-cli/internal/runtime"
 )
 
-// ProxyHandler handles proxying requests to inference services.
-//
-// This handler implements a transparent HTTP proxy that:
-//   - Forwards requests to running model instances
-//   - Handles both streaming and non-streaming responses
-//   - Supports OpenAI-compatible API endpoints
-//   - Preserves request/response semantics at the protocol level
-//   - Controls concurrency based on tensor parallelism degree
-//
-// The proxy is designed for high performance and low latency, making it
-// suitable for production inference workloads.
-type ProxyHandler struct {
-	handler           *Handler                      // Reference to main handler for accessing runtime manager
-	concurrencyMgr    *concurrencyManager           // Manages concurrent requests per instance
-}
+// ---------------------------------------------------------------------------
+// Concurrency management
+// ---------------------------------------------------------------------------
 
 // concurrencyManager manages concurrent request limits for each model instance.
 //
-// Each instance has a semaphore based on its tensor_parallel value, which
-// determines how many concurrent requests it can handle efficiently.
+// Each instance has a semaphore based on its max_concurrent metadata value,
+// which determines how many concurrent requests it can handle efficiently.
 type concurrencyManager struct {
 	mu         sync.RWMutex
-	semaphores map[string]chan struct{} // instanceID -> semaphore channel
+	semaphores map[string]chan struct{} // instanceID → semaphore channel
 }
 
-// newConcurrencyManager creates a new concurrency manager.
+// newConcurrencyManager creates a concurrency manager with an empty semaphore map.
 func newConcurrencyManager() *concurrencyManager {
 	return &concurrencyManager{
 		semaphores: make(map[string]chan struct{}),
@@ -55,57 +45,35 @@ func newConcurrencyManager() *concurrencyManager {
 }
 
 // acquireSlot acquires a concurrency slot for the given instance.
-//
-// This method will block if the instance is already handling the maximum
-// number of concurrent requests. The maxConcurrency parameter is typically
-// the tensor_parallel value from the instance metadata.
-//
-// Parameters:
-//   - ctx: Request context for cancellation
-//   - instanceID: Unique identifier for the instance
-//   - maxConcurrency: Maximum concurrent requests allowed
-//
-// Returns:
-//   - Release function to call when request is complete
-//   - Error if context is cancelled or semaphore creation fails
+// It blocks until a slot is available or the context is cancelled.
+// The returned function must be called to release the slot.
 func (cm *concurrencyManager) acquireSlot(ctx context.Context, instanceID string, maxConcurrency int) (func(), error) {
-	// Get or create semaphore for this instance
 	cm.mu.Lock()
 	sem, exists := cm.semaphores[instanceID]
 	if !exists {
-		// Create a buffered channel as semaphore
-		// Size is the max concurrent requests (typically tensor_parallel value)
 		sem = make(chan struct{}, maxConcurrency)
 		cm.semaphores[instanceID] = sem
 		logger.Debug("Created concurrency semaphore for instance %s (max: %d)", instanceID, maxConcurrency)
 	}
 	cm.mu.Unlock()
-	
-	// Try to acquire a slot
+
 	select {
 	case sem <- struct{}{}:
-		// Slot acquired
 		logger.Debug("Acquired concurrency slot for instance %s", instanceID)
-		
-		// Return release function
 		return func() {
 			<-sem
 			logger.Debug("Released concurrency slot for instance %s", instanceID)
 		}, nil
-		
 	case <-ctx.Done():
-		// Context cancelled while waiting
 		return nil, fmt.Errorf("request cancelled while waiting for concurrency slot: %w", ctx.Err())
 	}
 }
 
 // cleanupInstance removes the semaphore for a stopped instance.
-//
-// This should be called when an instance is stopped to free resources.
 func (cm *concurrencyManager) cleanupInstance(instanceID string) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	
+
 	if sem, exists := cm.semaphores[instanceID]; exists {
 		close(sem)
 		delete(cm.semaphores, instanceID)
@@ -113,361 +81,177 @@ func (cm *concurrencyManager) cleanupInstance(instanceID string) {
 	}
 }
 
-// NewProxyHandler creates a new proxy handler instance.
-//
-// The proxy handler requires access to the runtime manager to resolve
-// instance IDs to actual service endpoints.
-func NewProxyHandler(h *Handler) *ProxyHandler {
-	return &ProxyHandler{
+// ---------------------------------------------------------------------------
+// ProxyCore — shared proxy infrastructure
+// ---------------------------------------------------------------------------
+
+// ProxyCore contains the shared infrastructure for proxying requests to
+// inference engine instances. Both the OpenAI-compatible and Anthropic-compatible
+// handlers embed this core to share instance lookup, concurrency management,
+// and HTTP forwarding logic.
+type ProxyCore struct {
+	handler        *Handler
+	concurrencyMgr *concurrencyManager
+}
+
+// newProxyCore creates a new ProxyCore instance.
+func newProxyCore(h *Handler) *ProxyCore {
+	return &ProxyCore{
 		handler:        h,
 		concurrencyMgr: newConcurrencyManager(),
 	}
 }
 
-// minimalRequest represents minimal fields needed from request body.
+// FindInstanceByModel finds a running instance that serves the specified model.
 //
-// We only extract the fields we need for routing and stream detection,
-// avoiding full request body parsing which would introduce unnecessary overhead.
-type minimalRequest struct {
-	Model  string `json:"model"`           // Model name for routing to correct instance
-	Stream bool   `json:"stream,omitempty"` // Whether this is a streaming request
-}
-
-// ProxyRequest handles proxying a request to an inference service.
-//
-// This method implements the core proxy logic following OpenAI API conventions:
-//   1. Validate request path matches OpenAI API format (/v1/*)
-//   2. Extract model name from request body (minimal parsing)
-//   3. Find running instance matching the model name
-//   4. Detect if request is streaming by inspecting request body
-//   5. Forward request to target service
-//   6. Stream or buffer response back to client
-//
-// OpenAI API Endpoints Supported:
-//   - POST /v1/chat/completions - Chat completions (streaming/non-streaming)
-//   - POST /v1/completions - Text completions (streaming/non-streaming)
-//   - POST /v1/embeddings - Embeddings (non-streaming only)
-//
-// The proxy preserves HTTP semantics including:
-//   - Request headers (except Host and Connection)
-//   - Response headers
-//   - Status codes
-//   - Streaming vs buffered transfer
-func (p *ProxyHandler) ProxyRequest(w http.ResponseWriter, r *http.Request) {
-	// Validate path follows OpenAI API convention: /v1/{endpoint}
-	if !strings.HasPrefix(r.URL.Path, "/v1/") {
-		http.Error(w, "Invalid API path. Expected OpenAI-compatible format: /v1/{endpoint}", http.StatusBadRequest)
-		return
-	}
-
-	logger.Debug("Proxying OpenAI API request: %s %s", r.Method, r.URL.Path)
-	// Read request body to extract model name and streaming mode
-	// We need to preserve the body for forwarding, so we read it entirely
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		logger.Error("Failed to read request body: %v", err)
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-		return
-	}
-	defer r.Body.Close()
-
-	// Extract minimal fields from request body: model and stream
-	// We do minimal JSON parsing - only extract the fields we need for routing
-	var minReq minimalRequest
-	if len(bodyBytes) > 0 {
-		decoder := json.NewDecoder(bytes.NewReader(bodyBytes))
-		if err := decoder.Decode(&minReq); err != nil {
-			logger.Error("Failed to parse request body: %v", err)
-			http.Error(w, "Invalid request body: must be valid JSON", http.StatusBadRequest)
-			return
-		}
-	}
-
-	// Validate model field is present
-	if minReq.Model == "" {
-		http.Error(w, "Missing required field: model", http.StatusBadRequest)
-		return
-	}
-
-	logger.Debug("Request model: %s, streaming: %v", minReq.Model, minReq.Stream)
-
-	// Find running instance that matches the model name
-	// We look for instances where the model ID matches the requested model
-	instance, err := p.findInstanceByModel(r.Context(), minReq.Model)
-	if err != nil {
-		logger.Error("No running instance found for model %s: %v", minReq.Model, err)
-		http.Error(w, fmt.Sprintf("No running instance found for model: %s", minReq.Model), http.StatusNotFound)
-		return
-	}
-
-	if instance.State != "running" {
-		logger.Warn("Instance %s is not running (state: %s)", instance.ID, instance.State)
-		http.Error(w, fmt.Sprintf("Model instance is not running (state: %s)", instance.State), http.StatusServiceUnavailable)
-		return
-	}
-
-	logger.Debug("Routing to instance %s on port %d", instance.ID, instance.Port)
-
-	// Get concurrency limit from instance metadata (max_concurrent)
-	// Default to 0 (unlimited) if not specified
-	maxConcurrency := 0
-	if maxConcurrentStr, ok := instance.Metadata["max_concurrent"]; ok && maxConcurrentStr != "" {
-		if mc, err := strconv.Atoi(maxConcurrentStr); err == nil && mc > 0 {
-			maxConcurrency = mc
-		}
-	}
-	
-	// Only apply concurrency control if max_concurrent was explicitly set
-	var releaseSlot func()
-	if maxConcurrency > 0 {
-		// Acquire concurrency slot for this instance
-		// This will block if the instance is already at max capacity
-		slot, err := p.concurrencyMgr.acquireSlot(r.Context(), instance.ID, maxConcurrency)
-		if err != nil {
-			logger.Warn("Failed to acquire concurrency slot for instance %s: %v", instance.ID, err)
-			http.Error(w, "Service temporarily unavailable (concurrency limit reached)", http.StatusServiceUnavailable)
-			return
-		}
-		releaseSlot = slot
-		defer releaseSlot() // Ensure slot is released when request completes
-		
-		logger.Debug("Processing request for instance %s (max concurrent: %d)", instance.ID, maxConcurrency)
-	} else {
-		logger.Debug("Processing request for instance %s (unlimited concurrency)", instance.ID)
-	}
-
-	// Construct target URL - preserve the original path and query
-	targetURL := fmt.Sprintf("http://localhost:%d%s", instance.Port, r.URL.Path)
-	if r.URL.RawQuery != "" {
-		targetURL += "?" + r.URL.RawQuery
-	}
-
-	logger.Debug("Forwarding to: %s", targetURL)
-
-	// Create proxy request
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, bytes.NewReader(bodyBytes))
-	if err != nil {
-		logger.Error("Failed to create proxy request: %v", err)
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
-		return
-	}
-
-	// Copy headers from original request
-	// Skip certain headers that should not be forwarded
-	for name, values := range r.Header {
-		// Skip hop-by-hop headers
-		if name == "Connection" || name == "Keep-Alive" || name == "Proxy-Authenticate" ||
-			name == "Proxy-Authorization" || name == "Te" || name == "Trailers" ||
-			name == "Transfer-Encoding" || name == "Upgrade" {
-			continue
-		}
-		for _, value := range values {
-			proxyReq.Header.Add(name, value)
-		}
-	}
-
-	// Ensure we have proper content type
-	if proxyReq.Header.Get("Content-Type") == "" && len(bodyBytes) > 0 {
-		proxyReq.Header.Set("Content-Type", "application/json")
-	}
-
-	// Create HTTP client with reasonable timeout
-	client := &http.Client{
-		Timeout: 0, // No timeout for streaming requests
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse // Don't follow redirects
-		},
-	}
-
-	// Execute proxy request
-	resp, err := client.Do(proxyReq)
-	if err != nil {
-		logger.Error("Proxy request failed: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to forward request: %v", err), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Copy response headers
-	for name, values := range resp.Header {
-		// Skip hop-by-hop headers
-		if name == "Connection" || name == "Keep-Alive" || name == "Proxy-Authenticate" ||
-			name == "Proxy-Authorization" || name == "Te" || name == "Trailers" ||
-			name == "Transfer-Encoding" || name == "Upgrade" {
-			continue
-		}
-		for _, value := range values {
-			w.Header().Add(name, value)
-		}
-	}
-
-	// Write status code
-	w.WriteHeader(resp.StatusCode)
-
-	// Handle response based on streaming mode
-	if minReq.Stream {
-		// For streaming responses, we need to flush each chunk immediately
-		p.handleStreamingResponse(w, resp.Body)
-	} else {
-		// For non-streaming responses, we can buffer the entire response
-		p.handleBufferedResponse(w, resp.Body)
-	}
-
-	logger.Debug("Proxy request completed successfully for instance: %s", instance.ID)
-}
-
-// findInstanceByModel finds a running instance that serves the specified model.
-//
-// This method searches all running instances to find one whose model ID
-// matches the requested model name. The matching is case-insensitive and
-// supports both exact matches and prefix matches (e.g., "qwen2-7b" matches
-// "qwen2-7b-instruct-123456").
-//
-// Parameters:
-//   - ctx: Request context
-//   - modelName: The model name from the request body
-//
-// Returns:
-//   - The matching instance if found
-//   - Error if no matching instance is found or lookup fails
-func (p *ProxyHandler) findInstanceByModel(ctx context.Context, modelName string) (*runtime.Instance, error) {
-	// Get all running instances
-	instances, err := p.handler.runtimeManager.List(ctx)
+// The lookup performs two passes:
+//  1. Exact match on alias (or ModelID as fallback), case-insensitive
+//  2. Prefix match for partial model names (e.g., "qwen2-7b" matches "qwen2-7b-instruct")
+func (pc *ProxyCore) FindInstanceByModel(ctx context.Context, modelName string) (*runtime.Instance, error) {
+	instances, err := pc.handler.runtimeManager.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list instances: %w", err)
 	}
 
-	// Normalize model name for comparison
 	modelNameLower := strings.ToLower(modelName)
 
-	// First pass: look for exact alias match (primary lookup method)
+	// Pass 1: exact alias match.
 	for _, inst := range instances {
-		if inst.State == "running" {
-			// Use alias for matching, fallback to ModelID if alias is empty (backward compatibility)
-			alias := inst.Alias
-			if alias == "" {
-				alias = inst.ModelID
-			}
-			aliasLower := strings.ToLower(alias)
-			if aliasLower == modelNameLower {
-				logger.Debug("Found exact alias match: instance %s (alias: %s) for model %s", inst.ID, alias, modelName)
-				return inst, nil
-			}
+		if inst.State != "running" {
+			continue
+		}
+		alias := inst.Alias
+		if alias == "" {
+			alias = inst.ModelID
+		}
+		if strings.ToLower(alias) == modelNameLower {
+			logger.Debug("Found exact alias match: instance %s (alias: %s) for model %s", inst.ID, alias, modelName)
+			return inst, nil
 		}
 	}
 
-	// Second pass: look for prefix match on alias
-	// This handles cases like "qwen2-7b" matching "qwen2-7b-instruct"
+	// Pass 2: prefix match.
 	for _, inst := range instances {
-		if inst.State == "running" {
-			alias := inst.Alias
-			if alias == "" {
-				alias = inst.ModelID
-			}
-			aliasLower := strings.ToLower(alias)
-			if strings.HasPrefix(aliasLower, modelNameLower) || strings.HasPrefix(modelNameLower, aliasLower) {
-				logger.Debug("Found prefix match: instance %s (alias: %s) for requested model %s", inst.ID, alias, modelName)
-				return inst, nil
-			}
+		if inst.State != "running" {
+			continue
+		}
+		alias := inst.Alias
+		if alias == "" {
+			alias = inst.ModelID
+		}
+		aliasLower := strings.ToLower(alias)
+		if strings.HasPrefix(aliasLower, modelNameLower) || strings.HasPrefix(modelNameLower, aliasLower) {
+			logger.Debug("Found prefix match: instance %s (alias: %s) for model %s", inst.ID, alias, modelName)
+			return inst, nil
 		}
 	}
 
 	return nil, fmt.Errorf("no running instance found for model: %s", modelName)
 }
 
-// handleStreamingResponse handles streaming responses from the inference service.
-//
-// Streaming responses use Server-Sent Events (SSE) format:
-//   - Each line starts with "data: "
-//   - JSON objects are sent line by line
-//   - Stream ends with "data: [DONE]"
-//
-// This method:
-//   1. Reads the response line by line
-//   2. Flushes each line immediately to the client
-//   3. Handles connection errors gracefully
-//
-// This ensures low latency for streaming responses, which is critical
-// for chat applications where users expect incremental output.
-func (p *ProxyHandler) handleStreamingResponse(w http.ResponseWriter, body io.ReadCloser) {
-	// Get flusher for streaming
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		logger.Error("Response writer does not support flushing")
-		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
-		return
-	}
-
-	// Create a buffered reader for efficient line reading
-	reader := bufio.NewReader(body)
-	
-	// Buffer for reading chunks
-	buf := make([]byte, 4096)
-
-	for {
-		// Read chunk from response
-		n, err := reader.Read(buf)
-		if n > 0 {
-			// Write chunk to client
-			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
-				logger.Debug("Client disconnected during streaming: %v", writeErr)
-				return
-			}
-			
-			// Flush immediately for low latency
-			flusher.Flush()
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				// Normal end of stream
-				logger.Debug("Stream completed successfully")
-				return
-			}
-			// Network error or connection closed
-			logger.Debug("Stream interrupted: %v", err)
-			return
+// AcquireConcurrency acquires a concurrency slot for the instance if
+// max_concurrent is set in its metadata. Returns a release function (may be nil
+// if concurrency control is not enabled) and an error.
+func (pc *ProxyCore) AcquireConcurrency(ctx context.Context, instance *runtime.Instance) (release func(), err error) {
+	maxConcurrency := 0
+	if v, ok := instance.Metadata["max_concurrent"]; ok && v != "" {
+		if mc, parseErr := strconv.Atoi(v); parseErr == nil && mc > 0 {
+			maxConcurrency = mc
 		}
 	}
-}
 
-// handleBufferedResponse handles non-streaming responses from the inference service.
-//
-// Non-streaming responses are simpler:
-//   1. Read entire response body
-//   2. Write to client in one go
-//   3. Return
-//
-// This is suitable for:
-//   - Embeddings requests (always non-streaming)
-//   - Chat/completion requests with stream=false
-//   - Any other synchronous operations
-func (p *ProxyHandler) handleBufferedResponse(w http.ResponseWriter, body io.ReadCloser) {
-	// For non-streaming, we can use efficient copying
-	written, err := io.Copy(w, body)
+	if maxConcurrency <= 0 {
+		logger.Debug("Processing request for instance %s (unlimited concurrency)", instance.ID)
+		return nil, nil
+	}
+
+	slot, err := pc.concurrencyMgr.acquireSlot(ctx, instance.ID, maxConcurrency)
 	if err != nil {
-		logger.Error("Failed to write response body: %v", err)
-		return
+		return nil, err
 	}
-	
-	logger.Debug("Wrote %d bytes in buffered response", written)
+	logger.Debug("Processing request for instance %s (max concurrent: %d)", instance.ID, maxConcurrency)
+	return slot, nil
 }
 
-
-// HealthCheck provides a health check endpoint for the proxy.
+// ForwardRequest sends an HTTP request to the given instance and returns the
+// raw response. The caller owns the response body and must close it.
 //
-// This can be used by load balancers or monitoring systems to verify
-// that the proxy is operational.
-func (p *ProxyHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	
-	response := map[string]interface{}{
-		"status":    "healthy",
-		"timestamp": time.Now().Unix(),
-		"service":   "xw-proxy",
+// Parameters:
+//   - ctx: request context for cancellation
+//   - method: HTTP method (typically POST)
+//   - path: URL path to forward (e.g., "/v1/chat/completions")
+//   - query: raw URL query string (may be empty)
+//   - body: request body bytes
+//   - srcHeaders: original request headers to copy (hop-by-hop headers are filtered)
+//   - instance: target inference engine instance
+func (pc *ProxyCore) ForwardRequest(ctx context.Context, method, path, query string, body []byte, srcHeaders http.Header, instance *runtime.Instance) (*http.Response, error) {
+	targetURL := fmt.Sprintf("http://localhost:%d%s", instance.Port, path)
+	if query != "" {
+		targetURL += "?" + query
 	}
-	
-	json.NewEncoder(w).Encode(response)
+
+	logger.Debug("Forwarding to: %s", targetURL)
+
+	proxyReq, err := http.NewRequestWithContext(ctx, method, targetURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("creating proxy request: %w", err)
+	}
+
+	copyHeaders(srcHeaders, proxyReq.Header)
+
+	if proxyReq.Header.Get("Content-Type") == "" && len(body) > 0 {
+		proxyReq.Header.Set("Content-Type", "application/json")
+	}
+
+	client := &http.Client{
+		Timeout: 0,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	return client.Do(proxyReq)
 }
 
+// ---------------------------------------------------------------------------
+// HTTP header utilities
+// ---------------------------------------------------------------------------
+
+// hopByHopHeaders are HTTP headers that must not be forwarded by proxies
+// per RFC 2616 §13.5.1.
+var hopByHopHeaders = map[string]bool{
+	"Connection":          true,
+	"Keep-Alive":          true,
+	"Proxy-Authenticate":  true,
+	"Proxy-Authorization": true,
+	"Te":                  true,
+	"Trailers":            true,
+	"Transfer-Encoding":   true,
+	"Upgrade":             true,
+}
+
+// copyHeaders copies request headers from src to dst, filtering out
+// hop-by-hop headers that must not be forwarded.
+func copyHeaders(src, dst http.Header) {
+	for name, values := range src {
+		if hopByHopHeaders[name] {
+			continue
+		}
+		for _, v := range values {
+			dst.Add(name, v)
+		}
+	}
+}
+
+// copyResponseHeaders copies response headers from src to dst, filtering
+// out hop-by-hop headers that must not be forwarded.
+func copyResponseHeaders(src, dst http.Header) {
+	for name, values := range src {
+		if hopByHopHeaders[name] {
+			continue
+		}
+		for _, v := range values {
+			dst.Add(name, v)
+		}
+	}
+}

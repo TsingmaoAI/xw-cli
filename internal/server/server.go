@@ -146,8 +146,11 @@ func (s *Server) Start() error {
 		s.buildTime,
 	)
 
-	// Create proxy handler for inference service proxying
+	// Create proxy handlers for inference service proxying.
+	// Both OpenAI and Anthropic handlers share the same ProxyCore for
+	// instance lookup, concurrency management, and HTTP forwarding.
 	proxyHandler := handlers.NewProxyHandler(h)
+	anthropicHandler := handlers.NewAnthropicHandler(proxyHandler.ProxyCore)
 
 	mux := http.NewServeMux()
 
@@ -158,22 +161,22 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/models/downloaded", h.ListDownloadedModels)
 	mux.HandleFunc("/api/models/show", h.ShowModel)
 	mux.HandleFunc("/api/models/pull", h.PullModel)
-	
+
 	// Device management endpoints
 	mux.HandleFunc("/api/devices/list", h.ListDevices)
 	mux.HandleFunc("/api/devices/supported", h.GetSupportedDevices)
-	
+
 	// Configuration management endpoints
 	mux.HandleFunc("/api/config/info", h.ConfigInfo)
 	mux.HandleFunc("/api/config/set", h.ConfigSet)
 	mux.HandleFunc("/api/config/get", h.ConfigGet)
 	mux.HandleFunc("/api/config/reload", h.ConfigReload)
-	
+
 	// Configuration update endpoints
 	mux.HandleFunc("/api/update/list", h.ListVersions)
 	mux.HandleFunc("/api/update/current", h.GetCurrentVersion)
 	mux.HandleFunc("/api/update", h.Update)
-	
+
 	// Runtime management endpoints
 	mux.HandleFunc("/api/runtime/start", h.StartModel)
 	mux.HandleFunc("/api/runtime/instances", h.ListInstances)
@@ -181,14 +184,20 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/runtime/stop", h.StopInstance)
 	mux.HandleFunc("/api/runtime/remove", h.RemoveInstance)
 	mux.HandleFunc("/api/runtime/logs", h.StreamLogs)
-	
+
 	// OpenAI-compatible API endpoints
-	// These endpoints follow the OpenAI API specification and are proxied
-	// to running model instances based on the "model" field in request body
+	// Transparent proxy to running model instances based on the "model" field.
 	mux.HandleFunc("/v1/chat/completions", proxyHandler.ProxyRequest)
 	mux.HandleFunc("/v1/completions", proxyHandler.ProxyRequest)
 	mux.HandleFunc("/v1/embeddings", proxyHandler.ProxyRequest)
-	
+
+	// Anthropic Messages API endpoints
+	// Format-converting proxy: accepts Anthropic format, translates to OpenAI
+	// format for the backend, and translates responses back to Anthropic format.
+	// This enables Claude Code and other Anthropic API clients to use local models.
+	mux.HandleFunc("/v1/messages", anthropicHandler.HandleMessages)
+	mux.HandleFunc("/v1/messages/count_tokens", anthropicHandler.HandleCountTokens)
+
 	// Health check for proxy
 	mux.HandleFunc("/v1/health", proxyHandler.HealthCheck)
 
