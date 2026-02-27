@@ -30,7 +30,7 @@ templates:
       - tensor_parallel_size=1
       - server_port=8000
       - model_name=qwen2.5-7b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   # Ascend 910B - Qwen2.5-7B Instruct mindie
   - name: ascend-910b_qwen2.5-7b-instruct_mindie
@@ -51,7 +51,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-32b
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-32b_mindie
     params:
@@ -71,7 +71,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen3-8b
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-8b_mindie
     params:
@@ -89,11 +89,87 @@ templates:
     params:
       - gpu_memory_utilization=0.85
       - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=minimax-m2.1-w4a8
+      - extra_args=--quantization ascend --trust-remote-code --enforce-eager --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --chat-template $MODEL_PATH/chat_template.jinja --trust-remote-code
+
+    # Ascend 910B - MiniMax-M2.1 W4A8
+  - name: ascend-910b_minimax-m2.5-w4a8_vllm
+    envs:
+      VLLM_USE_V1: "0"
+    params:
+      - gpu_memory_utilization=0.85
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=minimax-m2.5-w4a8
+      - extra_args=--quantization ascend --trust-remote-code --enforce-eager --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code #--chat-template $MODEL_PATH/chat_template.jinja -
+
+  - name: ascend-910b_minimax-m2.5-w8a8_vllm
+    envs:
+      VLLM_USE_V1: "0"
+    params:
+      - gpu_memory_utilization=0.85
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=minimax-m2.5-w8a8
+      - extra_args=--quantization ascend --trust-remote-code --enforce-eager --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code  #--chat-template $MODEL_PATH/chat_template.jinja
+
+  - name: ascend-910b_qwen3.5-35b_vllm
+    envs:
+
+    params:
+      - gpu_memory_utilization=0.85
+      - max_model_len=6600
       - tensor_parallel_size=4
       - world_size=4
       - server_port=8000
-      - model_name=minimax-m2.1-w4a8
-      - extra_args=--quantization ascend --trust-remote-code --enforce-eager
+      - model_name=qwen3.5-35b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
+      - image=harbor.tsingmao.com/xw-cli/vllm-ascend:qwen3_5-arm64
+
+  - name: ascend-910b_qwen3.5-122b_vllm
+    envs:
+    params:
+      - gpu_memory_utilization=0.85
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3.5-122b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
+      - image=harbor.tsingmao.com/xw-cli/vllm-ascend:qwen3_5-arm64
+
+  - name: ascend-910b_qwen3.5-27b_vllm
+    envs:
+    params:
+      - gpu_memory_utilization=0.85
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3.5-27b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
+      - image=harbor.tsingmao.com/xw-cli/vllm-ascend:qwen3_5-arm64
+
+  # - name: ascend-910b_qwen3.5-397b_vllm
+  #   envs:
+  #     VLLM_USE_V1: "0"
+  #   params:
+  #     - gpu_memory_utilization=0.85
+  #     - max_model_len=32768
+  #     - tensor_parallel_size=8
+  #     - world_size=8
+  #     - server_port=8000
+  #     - model_name=qwen3.5-397b
+  #     - "extra_args=--compilation-config '{\"cudagraph_mode\":\"FULL_DECODE_ONLY\"}' --async-scheduling --allowed-local-media-path --quantization ascend --mm-processor-cache-gb 0  --additional-config '{\"enable_cpu_binding\":true, \"multistream_overlap_shared_expert\": true}' --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3"
+  #     - image=harbor.tsingmao.com/xw-cli/vllm-ascend:qwen3_5-arm64
+
 
   # Ascend 910B - Qwen3-235B-A22B W4A8
   - name: ascend-910b_qwen3-235b-a22b-w4a8_vllm
@@ -104,6 +180,83 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=qwen3-235b-a22b-w4a8
+      - extra_args=--quantization ascend --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
+
+  # Ascend 910B - DeepSeek3.2 W4A8 (omni-infer)
+  - name: ascend-910b_deepseek3.2-w4a8_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=deepseek3.2-w4a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-32B (omni-infer)
+  - name: ascend-910b_qwen3-32b_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b
+      - extra_args=
+
+  # Ascend 910B - Qwen3-8B (omni-infer)
+  - name: ascend-910b_qwen3-8b_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=1
+      - world_size=1
+      - server_port=8000
+      - model_name=qwen3-8b
+      - extra_args=
+
+  # Ascend 910B - Qwen3-32B W8A8 (omni-infer)
+  - name: ascend-910b_qwen3-32b-w8a8_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-32b-w8a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-30B-A3B Instruct 2507 W4A8 (omni-infer)
+  - name: ascend-910b_qwen3-30b-a3b-instruct-2507-w4a8_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-30b-a3b-instruct-2507-w4a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-235B-A22B W4A8 (omni-infer)
+  - name: ascend-910b_qwen3-235b-a22b-w4a8_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=40960
+      - tensor_parallel_size=8
+      - world_size=8
+      - server_port=8000
+      - model_name=qwen3-235b-a22b-w4a8
+      - extra_args=--quantization ascend
+
+  # Ascend 910B - Qwen3-Next-80B-A3B Instruct W8A8 (omni-infer)
+  - name: ascend-910b_qwen3-next-80b-a3b-instruct-w8a8_omni-infer
+    params:
+      - gpu_memory_utilization=0.9
+      - max_model_len=32768
+      - tensor_parallel_size=4
+      - world_size=4
+      - server_port=8000
+      - model_name=qwen3-next-80b-a3b-instruct-w8a8
       - extra_args=--quantization ascend
 
   # Ascend 910B - Qwen3-Next-80B-A3B Instruct W8A8
@@ -115,7 +268,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-next-80b-a3b-instruct-w8a8
-      - extra_args=--quantization ascend
+      - extra_args=--quantization ascend --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-next-80b-a3b-instruct-w8a8_mindie
     params:
@@ -135,7 +288,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-32b-w8a8
-      - extra_args=--quantization ascend
+      - extra_args=--quantization ascend --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-32b-w8a8_mindie
     params:
@@ -155,7 +308,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-30b-a3b-instruct-2507-w4a8
-      - extra_args=--quantization ascend
+      - extra_args=--quantization ascend --enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-30b-a3b-instruct-2507-w4a8_mindie
     params:
@@ -175,7 +328,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=glm-4.5-w8a8
-      - extra_args=--quantization ascend
+      - extra_args=--quantization ascend --enable-auto-tool-choice --tool-call-parser glm45 --reasoning-parser glm45
 
   # Ascend 910B - Qwen3-VL-30B-A3B Instruct
   - name: ascend-910b_qwen3-vl-30b-a3b-instruct_vllm
@@ -186,7 +339,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-vl-30b-a3b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-vl-30b-a3b-instruct_mindie
     params:
@@ -206,18 +359,9 @@ templates:
       - world_size=2
       - server_port=8000
       - model_name=qwen2.5-14b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-910b_qwen2.5-14b-instruct_mindie
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=2
-      - world_size=2
-      - server_port=8000
-      - model_name=qwen2.5-14b-instruct
-
-  - name: ascend-910b_qwen2.5-14b-instruct_mlguider
     params:
       - gpu_memory_utilization=0.9
       - max_model_len=32768
@@ -235,7 +379,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=qwen2.5-72b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-910b_qwen2.5-72b-instruct_mindie
     params:
@@ -246,14 +390,6 @@ templates:
       - server_port=8000
       - model_name=qwen2.5-72b-instruct
 
-  - name: ascend-910b_qwen2.5-72b-instruct_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=8
-      - world_size=8
-      - server_port=8000
-      - model_name=qwen2.5-72b-instruct
 
   # Ascend 910B - QwQ-32B
   - name: ascend-910b_qwq-32b_vllm
@@ -264,7 +400,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwq-32b
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser deepseek_r1
 
   - name: ascend-910b_qwq-32b_mindie
     params:
@@ -275,14 +411,6 @@ templates:
       - server_port=8000
       - model_name=qwq-32b
 
-  - name: ascend-910b_qwq-32b_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=4
-      - world_size=4
-      - server_port=8000
-      - model_name=qwq-32b
 
   # Ascend 910B - Qwen2.5-VL-7B Instruct
   - name: ascend-910b_qwen2.5-vl-7b-instruct_vllm
@@ -293,7 +421,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen2.5-vl-7b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-910b_qwen2.5-vl-7b-instruct_mindie
     params:
@@ -304,14 +432,6 @@ templates:
       - server_port=8000
       - model_name=qwen2.5-vl-7b-instruct
 
-  - name: ascend-910b_qwen2.5-vl-7b-instruct_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=1
-      - world_size=1
-      - server_port=8000
-      - model_name=qwen2.5-vl-7b-instruct
 
   # Ascend 910B - Qwen3-VL-8B Instruct
   - name: ascend-910b_qwen3-vl-8b-instruct_vllm
@@ -322,7 +442,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen3-vl-8b-instruct
-      - extra_args=
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-910b_qwen3-vl-8b-instruct_mindie
     params:
@@ -333,14 +453,6 @@ templates:
       - server_port=8000
       - model_name=qwen3-vl-8b-instruct
 
-  - name: ascend-910b_qwen3-vl-8b-instruct_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=1
-      - world_size=1
-      - server_port=8000
-      - model_name=qwen3-vl-8b-instruct
 
   # Ascend 910B - DeepSeek-R1 Distill Qwen 7B
   - name: ascend-910b_deepseek-r1-distill-qwen-7b_vllm
@@ -351,7 +463,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-7b
-      - extra_args=
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-910b_deepseek-r1-distill-qwen-7b_mindie
     params:
@@ -362,14 +474,6 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-7b
 
-  - name: ascend-910b_deepseek-r1-distill-qwen-7b_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=1
-      - world_size=1
-      - server_port=8000
-      - model_name=deepseek-r1-distill-qwen-7b
 
   # Ascend 910B - DeepSeek-R1 Distill Llama 70B
   - name: ascend-910b_deepseek-r1-distill-llama-70b_vllm
@@ -380,7 +484,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=deepseek-r1-distill-llama-70b
-      - extra_args=
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-910b_deepseek-r1-distill-llama-70b_mindie
     params:
@@ -391,14 +495,6 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-llama-70b
 
-  - name: ascend-910b_deepseek-r1-distill-llama-70b_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=8
-      - world_size=8
-      - server_port=8000
-      - model_name=deepseek-r1-distill-llama-70b
 
   # Ascend 910B - DeepSeek-R1 Distill Qwen 32B
   - name: ascend-910b_deepseek-r1-distill-qwen-32b_vllm
@@ -409,7 +505,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-32b
-      - extra_args=
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-910b_deepseek-r1-distill-qwen-32b_mindie
     params:
@@ -420,14 +516,6 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-32b
 
-  - name: ascend-910b_deepseek-r1-distill-qwen-32b_mlguider
-    params:
-      - gpu_memory_utilization=0.9
-      - max_model_len=32768
-      - tensor_parallel_size=4
-      - world_size=4
-      - server_port=8000
-      - model_name=deepseek-r1-distill-qwen-32b
 
   - name: ascend-910b_glm-5_vllm
     params:
@@ -449,6 +537,7 @@ templates:
       - world_size=4
       - server_port=8000
       - custom_args=" --xxx --yyy"
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-310p_qwen3-32b_mindie
     params:
@@ -486,6 +575,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen3-8b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-310p_qwen3-8b_mindie
     params:
@@ -515,6 +605,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwen3-vl-30b-a3b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-310p_qwen3-vl-30b-a3b-instruct_mindie
     params:
@@ -535,6 +626,7 @@ templates:
       - world_size=2
       - server_port=8000
       - model_name=qwen2.5-14b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-310p_qwen2.5-14b-instruct_mindie
     params:
@@ -563,6 +655,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=qwen2.5-72b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-310p_qwen2.5-72b-instruct_mindie
     params:
@@ -591,6 +684,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=qwq-32b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser deepseek_r1
 
   - name: ascend-310p_qwq-32b_mindie
     params:
@@ -619,6 +713,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen2.5-vl-7b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-310p_qwen2.5-vl-7b-instruct_mindie
     params:
@@ -639,6 +734,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen3-vl-8b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   - name: ascend-310p_qwen3-vl-8b-instruct_mindie
     params:
@@ -659,6 +755,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-7b
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-310p_deepseek-r1-distill-qwen-7b_mindie
     params:
@@ -687,6 +784,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=deepseek-r1-distill-llama-70b
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-310p_deepseek-r1-distill-llama-70b_mindie
     params:
@@ -715,6 +813,7 @@ templates:
       - world_size=4
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-32b
+      - extra_args=--reasoning-parser deepseek_r1
 
   - name: ascend-310p_deepseek-r1-distill-qwen-32b_mindie
     params:
@@ -751,6 +850,7 @@ templates:
       - world_size=1
       - server_port=8000
       - model_name=qwen2.5-7b-instruct
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   - name: ascend-310p_qwen2.5-7b-instruct_mindie
     params:
@@ -790,6 +890,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=glm-4.7-w8a8
+      - extra_args=--enable-auto-tool-choice --tool-call-parser glm47
 
 
   # 沐曦 C550 - Qwen3-32B
@@ -802,6 +903,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-32b
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # 沐曦 C550 - Qwen3-8B
   - name: metax-c550_qwen3-8b_vllm
@@ -813,6 +915,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-8b
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # Metax C550 with Qwen3-235B-A22B W8A8 using vLLM
   - name: metax-c550_qwen3-235b-a22b-w8a8_vllm
@@ -824,6 +927,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=qwen3-235b-a22b
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
 
   # 沐曦 C550 - DeepSeek OCR
@@ -847,6 +951,7 @@ templates:
       - server_port=8000
       - model_name=glm-4.5-w8a8
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser glm45 --reasoning-parser glm45
 
   # 沐曦 C550 - Qwen2.5-14B Instruct
   - name: metax-c550_qwen2.5-14b-instruct_vllm
@@ -858,6 +963,7 @@ templates:
       - server_port=8000
       - model_name=qwen2.5-14b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   # 沐曦 C550 - Qwen2.5-72B Instruct
   - name: metax-c550_qwen2.5-72b-instruct_vllm
@@ -869,6 +975,7 @@ templates:
       - server_port=8000
       - model_name=qwen2.5-72b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   # 沐曦 C550 - QwQ-32B
   - name: metax-c550_qwq-32b_vllm
@@ -880,6 +987,7 @@ templates:
       - server_port=8000
       - model_name=qwq-32b
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser deepseek_r1
 
   # 沐曦 C550 - Qwen2.5-VL-7B Instruct
   - name: metax-c550_qwen2.5-vl-7b-instruct_vllm
@@ -891,6 +999,7 @@ templates:
       - server_port=8000
       - model_name=qwen2.5-vl-7b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes
 
   # 沐曦 C550 - Qwen3-VL-8B Instruct
   - name: metax-c550_qwen3-vl-8b-instruct_vllm
@@ -902,6 +1011,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-vl-8b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # 沐曦 C550 - DeepSeek-R1 Distill Qwen 7B
   - name: metax-c550_deepseek-r1-distill-qwen-7b_vllm
@@ -913,6 +1023,7 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-7b
       - gpu_memory_utilization=0.9
+      - extra_args=--reasoning-parser deepseek_r1
 
   # 沐曦 C550 - DeepSeek-R1 Distill Llama 70B
   - name: metax-c550_deepseek-r1-distill-llama-70b_vllm
@@ -924,6 +1035,7 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-llama-70b
       - gpu_memory_utilization=0.9
+      - extra_args=--reasoning-parser deepseek_r1
 
   # 沐曦 C550 - DeepSeek-R1 Distill Qwen 32B
   - name: metax-c550_deepseek-r1-distill-qwen-32b_vllm
@@ -935,6 +1047,7 @@ templates:
       - server_port=8000
       - model_name=deepseek-r1-distill-qwen-32b
       - gpu_memory_utilization=0.9
+      - extra_args=--reasoning-parser deepseek_r1
 
   # 以下模板在 models.yaml 中 metax-c550 暂无对应 model_id，保留供后续机型或模型接入使用
   # Metax C550 with Qwen3-30B-A3B W8A8 using vLLM（models 中无 qwen3-30b-a3b-w8a8 支持 c550）
@@ -947,6 +1060,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-30b-a3b
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # Metax C550 with Qwen3-Next-80B-A3B-Instruct W8A8（models 中该模型仅支持 ascend-910b）
   - name: metax-c550_qwen3-next-80b-a3b-instruct-w8a8_vllm
@@ -958,6 +1072,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-next-80b-a3b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # Metax C550 with Qwen3-Coder-30B-A3B-Instruct（models 中无此 model_id，保留供后续接入）
   - name: metax-c550_qwen3-coder-30b-a3b-instruct_vllm
@@ -969,6 +1084,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-coder-30b-a3b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser qwen3_xml
 
   # 沐曦 C550 - Qwen3-VL-30B-A3B Instruct
   - name: metax-c550_qwen3-vl-30b-a3b-instruct_vllm
@@ -980,6 +1096,7 @@ templates:
       - server_port=8000
       - model_name=qwen3-vl-30b-a3b-instruct
       - gpu_memory_utilization=0.9
+      - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
 
   # # Example: Ascend 910B with Qwen2.5 7B Instruct using vLLM
   # - name: ascend-910b_qwen2.5-7b-instruct_vllm

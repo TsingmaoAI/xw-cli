@@ -50,7 +50,7 @@ vendors:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
             amd64: NONE
           omni-infer:
-            arm64: omniinfer-xw:latest
+            arm64: harbor.tsingmao.com/xw-cli/omniinfer-a2-arm:release_v0.8.0-vllm-xw
             amd64: NONE
         
         ext_sandboxes:

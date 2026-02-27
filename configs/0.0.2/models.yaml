@@ -45,6 +45,7 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+        - omni-infer:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -67,6 +68,7 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+        - omni-infer:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -111,6 +113,24 @@ models:
       - completion
       - vision
 
+  # DeepSeek-V3.2 W4A8 (Ascend 量化)
+  - model_id: deepseek3.2-w4a8
+    source_id: vllm-ascend/DeepSeek-V3.2-W4A8
+
+    # Model specifications
+    parameters: 671.0
+    context_length: 160000
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+        - omni-infer:docker
+
+    tag: w4a8
+    capabilities:
+      - completion
+
   # MiniMax M2.1 W4A8
   - model_id: minimax-m2.1-w4a8
     source_id: tsingmao-intelligence/MiniMax-M2.1.w4a8.ascend
@@ -125,6 +145,38 @@ models:
         - vllm:docker
 
     tag: w4a8
+    capabilities:
+      - completion
+  # MiniMax M2.5 W4A8
+  - model_id: minimax-m2.5-w4a8
+    source_id: tsingmao-intelligence/MiniMax-M2.5.w4a8.ascend
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: w4a8
+    capabilities:
+      - completion
+  # MiniMax M2.5 W8A8
+  - model_id: minimax-m2.5-w8a8
+    source_id: tsingmao-intelligence/MiniMax-M2.5.w8a8.ascend
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    # Deployment configuration (device -> engines mapping)
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: w8a8
     capabilities:
       - completion
 
@@ -174,6 +226,7 @@ models:
     supported_devices:
       ascend-910b:
         - vllm:docker
+        - omni-infer:docker
 
     tag: w4a8
     capabilities:
@@ -192,6 +245,7 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+        - omni-infer:docker
 
     tag: w8a8
     capabilities:
@@ -210,6 +264,7 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+        - omni-infer:docker
 
     tag: w8a8
     capabilities:
@@ -228,6 +283,7 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
+        - omni-infer:docker
 
     tag: w4a8
     capabilities:
@@ -288,7 +344,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -312,7 +367,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -336,7 +390,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -360,7 +413,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -384,7 +436,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -408,7 +459,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -432,7 +482,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -456,7 +505,6 @@ models:
       ascend-910b:
         - vllm:docker
         - mindie:docker
-        - mlguider:docker
       ascend-310p:
         - vllm:docker
         - mindie:docker
@@ -497,6 +545,70 @@ models:
         - vllm:docker
 
     capabilities:
+  
+  # Qwen3-5-397B-W8A8
+  - model_id: qwen3.5-397b-w8a8
+    source_id: Eco-Tech/Qwen3.5-397B-A17B-w8a8-mtp
+
+    # Model specifications
+    parameters: 397.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
+    
+  # Qwen3-5-122B-W8A8
+  - model_id: qwen3.5-122b
+    source_id: Qwen/Qwen3.5-122B
+
+    # Model specifications
+    parameters: 122.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+
+  # Qwen3-5-35B-W4A8
+  - model_id: qwen3.5-35b
+    source_id: Qwen/Qwen3.5-35B
+
+    # Model specifications
+    parameters: 35.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+ 
+  # Qwen3-5-27B-W8A8
+  - model_id: qwen3.5-27b
+    source_id: Qwen/Qwen3.5-27B
+
+    # Model specifications
+    parameters: 27.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
 
 # Notes:
 # - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")
