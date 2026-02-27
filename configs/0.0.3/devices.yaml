@@ -1,0 +1,344 @@
+# XW Device Configuration
+# This file defines AI chip vendors, models, and their runtime images.
+#
+# Configuration File Location:
+#   - Loaded from the versioned config directory specified by --config flag
+#   - Default: ~/.xw/{version}/devices.yaml
+#   - System install: /etc/xw/{version}/devices.yaml (if using system-wide installation)
+
+version: "1.0"
+
+vendors:
+  # Huawei Ascend NPU Series
+  - vendor_name: Huawei
+    vendor_id: "0x19e5"
+    
+    chip_models:
+      # Ascend 910B (with variants support)
+      - config_key: ascend-910b
+        model_name: Ascend 910B
+        device_id: "0xd802"
+        generation: Ascend 9xx
+        # Variants: Different sub-versions with unique subsystem_device_id
+        # All variants share the same runtime_images from base model config
+        # Uncomment and configure based on your actual hardware
+        # Get subsystem_device_id via: cat /sys/bus/pci/devices/0000:XX:YY.Z/subsystem_device
+        variants:
+          - subsystem_device_id: "0x3001"
+            variant_key: "ascend-910b1"
+            variant_name: "910B1"
+          # - subsystem_device_id: "0x0002"
+          #   variant_key: "ascend-910b2"
+          #   variant_name: "910B2"
+          # - subsystem_device_id: "0x0002"
+          #   variant_key: "ascend-910b2"
+          #   variant_name: "910B2"
+          - subsystem_device_id: "0x4000"
+            variant_key: "ascend-910b4"
+            variant_name: "910B4"
+        # If no variant matches, base config (ascend-910b) is used as fallback
+        # Topology: 8 cards in 2 groups of 4-card HCCS interconnect
+        topology:
+          boxes:
+            - devices: [0, 1, 2, 3]  # Group 1: Cards 0-3 interconnected
+            - devices: [4, 5, 6, 7]  # Group 2: Cards 4-7 interconnected
+        runtime_images:
+          vllm:
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.14.0rc1-arm64            
+            amd64: NONE
+          mindie:
+            arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
+            amd64: NONE
+          omni-infer:
+            arm64: harbor.tsingmao.com/xw-cli/omniinfer-a2-arm:release_v0.8.0-vllm-xw
+            amd64: NONE
+        
+        ext_sandboxes:
+          # Common configuration (based on vllm as baseline, shared by all engines)
+          devices:
+            # Individual NPU devices (auto-matched by index)
+            - /dev/davinci0
+            - /dev/davinci1
+            - /dev/davinci2
+            - /dev/davinci3
+            - /dev/davinci4
+            - /dev/davinci5
+            - /dev/davinci6
+            - /dev/davinci7
+            # Common Ascend devices (always mounted)
+            - /dev/davinci_manager
+            - /dev/devmm_svm
+            - /dev/hisi_hdc
+          volumes:
+            # vLLM baseline volumes
+            - /usr/local/dcmi:/usr/local/dcmi
+            - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+            - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+            - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+            - /etc/ascend_install.info:/etc/ascend_install.info
+            - /root/.cache:/root/.cache
+          runtime: runc
+          
+          # Engine-specific configurations
+          vllm:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            environment:
+              ASCEND_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+              ASCEND_SLOG_PRINT_TO_STDOUT: "1"
+              ASCEND_GLOBAL_LOG_LEVEL: "3"
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+          
+          mindie:
+            device_env: MINDIE_NPU_DEVICE_IDS
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
+          
+          omni-infer:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            privileged: true
+            shm_size_gb: 500
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+      
+      # Ascend 310P (Dual-chip card)
+      - config_key: ascend-310p
+        model_name: Ascend 310P
+        device_id: "0xd500"
+        generation: Ascend 3xx
+        chips_per_device: 2  # Each PCI device contains 2 AI chips
+        # Topology: Chips on same physical card are high-speed interconnected
+        # Assumes 4 physical cards (8 logical chips total)
+        topology:
+          boxes:
+            - devices: [0, 1]  # Physical card 0
+            - devices: [2, 3]  # Physical card 1
+            - devices: [4, 5]  # Physical card 2
+            - devices: [6, 7]  # Physical card 3
+        runtime_images:
+          vllm:
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:main-310p-arm64
+            amd64: NONE
+          mindie:
+            arm64: harbor.tsingmao.com/xw-cli/mindie:2.3.0-300I-Duo-py311-openeuler24.03-lts-arm64
+            amd64: NONE
+          mlguider:
+            arm64: harbor.tsingmao.com/xw-cli/mlguider:0123-310p-arm64
+            amd64: NONE
+        
+        ext_sandboxes:
+          # Common configuration (based on vllm as baseline, shared by all engines)
+          devices:
+            # Individual NPU devices (auto-matched by index)
+            - /dev/davinci0
+            - /dev/davinci1
+            - /dev/davinci2
+            - /dev/davinci3
+            - /dev/davinci4
+            - /dev/davinci5
+            - /dev/davinci6
+            - /dev/davinci7
+            # Common Ascend devices (always mounted)
+            - /dev/davinci_manager
+            - /dev/devmm_svm
+            - /dev/hisi_hdc
+          volumes:
+            # vLLM baseline volumes
+            - /usr/local/dcmi:/usr/local/dcmi
+            - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+            - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+            - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+            - /etc/ascend_install.info:/etc/ascend_install.info
+            - /root/.cache:/root/.cache
+          runtime: runc
+          
+          # Engine-specific configurations
+          vllm:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            environment:
+              ASCEND_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7"
+              ASCEND_SLOG_PRINT_TO_STDOUT: "1"
+              ASCEND_GLOBAL_LOG_LEVEL: "3"
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+          
+          mindie:
+            device_env: MINDIE_NPU_DEVICE_IDS
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
+          
+          mlguider:
+            device_env: DEVICES
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+              - NET_ADMIN
+
+  - vendor_name: Metax
+    vendor_id: "0x9999"
+
+    chip_models:
+      # Metax C550
+      - config_key: metax-c550
+        model_name: Metax C550
+        device_id: "0x4000"
+        generation: Metax C5xx
+        runtime_images:
+          vllm:
+            arm64: NONE
+            amd64: harbor.tsingmao.com/xw-cli/vllm-metax:0.12.0-maca.torch2.8-py310-ubuntu22.04-amd64
+          mindie:
+            arm64: NONE
+            amd64: NONE
+          mlguider:
+            arm64: NONE
+            amd64: NONE
+        
+        ext_sandboxes:
+          # Common configuration (shared by all engines)
+          devices:
+            # MetaX uses DRI interface (GPU-like access pattern)
+            - /dev/dri
+            # MetaX control device
+            - /dev/mxcd
+            # InfiniBand for multi-device communication
+            - /dev/infiniband
+          volumes:
+            # System libraries and MetaX runtime
+            - /usr/local:/usr/local
+            # Cache directory for model downloads
+            - /root/.cache:/root/.cache
+          runtime: runc
+          
+          # Engine-specific configurations
+          vllm:
+            device_env: CUDA_VISIBLE_DEVICES
+            environment:
+              VLLM_WORKER_MULTIPROC_METHOD: spawn
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+    
+# Notes:
+# - config_key: Unique identifier used in runtime configuration and model definitions
+# - vendor_id and device_id: PCIe identification (16-bit hex values, get via: lspci -nn)
+#
+# - variants: (Optional) List of chip sub-versions with different subsystem_device_id
+#   - Used to distinguish between models like 910B1, 910B2 that share the same device_id
+#   - All variants share the same runtime_images from base model config
+#   - Get subsystem_device_id via: cat /sys/bus/pci/devices/0000:XX:YY.Z/subsystem_device
+#   
+#   Three-phase matching logic (优雅降级):
+#     Phase 1: If model has variants, try to match subsystem_device_id
+#              → Returns variant config (variant_key, variant_name)
+#     Phase 2: If no variant matched, use base model config as fallback
+#              → Returns base config (config_key, model_name)
+#     Phase 3: If no model matched, returns nil
+#   
+#   Recommended configuration pattern (NEW FORMAT):
+#       - config_key: ascend-910b
+#         model_name: Ascend 910B
+#         device_id: "0xd802"
+#         variants:
+#           - subsystem_device_id: "0x0001"
+#             variant_key: "ascend-910b1"
+#             variant_name: "910B1"
+#           - subsystem_device_id: "0x0002"
+#             variant_key: "ascend-910b2"
+#             variant_name: "910B2"
+#         runtime_images:  # Shared by all variants
+#           vllm:
+#             arm64: harbor.xxx/vllm-910b:latest
+#   
+#   Benefits:
+#     - Clean structure: All 910B variants under one chip model
+#     - Automatic fallback: Unknown subsystem_device_id uses base config
+#     - Shared images: All variants use the same runtime_images
+#
+# - subsystem_device_id: (DEPRECATED) Use variants instead
+#   - Old format for backward compatibility only
+# - runtime_images: Docker images for inference engines by CPU architecture
+#   - arm64: ARM 64-bit (aarch64)
+#   - amd64: x86 64-bit (x86_64)
+#   - NONE: Not supported on this architecture
+# - chips_per_device: Number of AI chips per physical PCI device (for multi-chip cards)
+# - topology: Logical chip grouping for topology-aware allocation (high-speed interconnect boxes)
+#   - boxes: List of chip groups, each box contains chips with high-speed interconnect
+#   - devices: Logical chip indices (as shown in 'xw device list')
+#   - Distance calculation: same box = 0, different boxes = |box_index_a - box_index_b|
+# - ext_sandboxes: Extended sandbox configurations for additional chips (optional)
+#   - Enables support for niche accelerators without code changes
+#   - Structure: engine_name -> sandbox_config
+#   - device_env: Environment variable for device visibility (set to comma-separated indices)
+#   - devices: Device node paths (paths ending with digit are per-device, others are shared)
+#   - volumes: Host:container volume mounts
+#   - privileged: Whether container requires privileged mode
+#   - runtime: Docker runtime (default: runc)
+#   - shm_size_gb: Shared memory size in GB (default: 16)
+#   - capabilities: Linux capabilities required
+#
+# Example ext_sandboxes configuration (uncomment and customize for your hardware):
+#
+#  - vendor_name: Baidu
+#    vendor_id: "0x1d22"
+#    chip_models:
+#      - config_key: kunlun-r200
+#        model_name: Kunlun XPU R200
+#        device_id: "0x3684"
+#        ext_sandboxes:
+#          # Common configuration (shared by all engines)
+#          devices:
+#            - /dev/xpu0
+#            - /dev/xpu1
+#            - /dev/xpu2
+#            - /dev/xpu3
+#            - /dev/xpu_ctl
+#          volumes:
+#            - /usr/local/xpu:/usr/local/xpu
+#            - /root/.cache:/root/.cache
+#          runtime: runc
+#          # Engine-specific configurations
+#          vllm:
+#            device_env: XPU_VISIBLE_DEVICES
+#            environment:
+#              XPU_WORKER_MULTIPROC_METHOD: spawn
+#            privileged: true
+#            shm_size_gb: 100
+#            capabilities:
+#              - SYS_ADMIN
+#              - SYS_RAWIO
+#              - IPC_LOCK
+

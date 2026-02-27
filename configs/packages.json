@@ -5,6 +5,24 @@
   "updated_at": "2026-02-10T00:00:00Z",
   "packages": [
     {
+      "version": "0.0.3",
+      "name": "0.0.3",
+      "description": "support Qwen3.5 on Ascend 910B with vLLM & support Omni-infer on Ascend 910B",
+      "release_date": "2026-02-27",
+      "download_url": "https://xw.tsingmao.com/packages/0.0.3.tar.gz",
+      "sha256": "",
+      "min_xw_version": "0.0.1"
+    },
+    {
+      "version": "0.0.2",
+      "name": "0.0.2",
+      "description": "support MiniMax-2.5 w4a8/w8a8 on Ascend 910B with vLLM",
+      "release_date": "2026-02-14",
+      "download_url": "https://xw.tsingmao.com/packages/0.0.2.tar.gz",
+      "sha256": "",
+      "min_xw_version": "0.0.1"
+    },
+    {
       "version": "0.0.1",
       "name": "0.0.1",
       "description": "Initial configuration version with Ascend 910B/310P and MetaX C550 support",
@@ -15,4 +33,3 @@
     }
   ]
 }
-
