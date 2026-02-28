@@ -93,7 +93,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=minimax-m2.1-w4a8
-      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill--load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --chat-template $MODEL_PATH/chat_template.jinja --trust-remote-code
+      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --chat-template $MODEL_PATH/chat_template.jinja --trust-remote-code
 
     # Ascend 910B - MiniMax-M2.1 W4A8
   - name: ascend-910b_minimax-m2.5-w4a8_vllm
@@ -106,7 +106,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=minimax-m2.5-w4a8
-      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill--load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code #--chat-template $MODEL_PATH/chat_template.jinja -
+      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code #--chat-template $MODEL_PATH/chat_template.jinja -
 
   - name: ascend-910b_minimax-m2.5-w8a8_vllm
     envs:
@@ -118,7 +118,7 @@ templates:
       - world_size=8
       - server_port=8000
       - model_name=minimax-m2.5-w8a8
-      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill--load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code  #--chat-template $MODEL_PATH/chat_template.jinja
+      - extra_args=--quantization ascend --trust-remote-code --enable-chunked-prefill --load-format safetensors --reasoning-parser minimax_m2 --tool-call-parser minimax_m2 --enable-auto-tool-choice --trust-remote-code  #--chat-template $MODEL_PATH/chat_template.jinja
 
   - name: ascend-910b_qwen3.5-35b_vllm
     envs:
