@@ -546,25 +546,25 @@ models:
 
     capabilities:
   
-  # Qwen3-5-397B-W8A8
-  - model_id: qwen3.5-397b-w8a8
-    source_id: Eco-Tech/Qwen3.5-397B-A17B-w8a8-mtp
+  # # Qwen3-5-397B-W8A8
+  # - model_id: qwen3.5-397b-w8a8
+  #   source_id: Eco-Tech/Qwen3.5-397B-A17B-w8a8-mtp
 
-    # Model specifications
-    parameters: 397.0
-    context_length: 131072
+  #   # Model specifications
+  #   parameters: 397.0
+  #   context_length: 131072
 
-    supported_devices:
-      ascend-910b:
-        - vllm:docker
+  #   supported_devices:
+  #     ascend-910b:
+  #       - vllm:docker
 
-    tag: w8a8
-    capabilities:
-      - completion
+  #   tag: w8a8
+  #   capabilities:
+  #     - completion
     
   # Qwen3-5-122B-W8A8
   - model_id: qwen3.5-122b
-    source_id: Qwen/Qwen3.5-122B
+    source_id: Qwen/Qwen3.5-122B-A10B
 
     # Model specifications
     parameters: 122.0
@@ -580,7 +580,7 @@ models:
 
   # Qwen3-5-35B-W4A8
   - model_id: qwen3.5-35b
-    source_id: Qwen/Qwen3.5-35B
+    source_id: Qwen/Qwen3.5-35B-A3B
 
     # Model specifications
     parameters: 35.0
@@ -609,6 +609,87 @@ models:
     tag: bfloat16
     capabilities:
       - completion
+
+  # Qwen3-5-9B
+  - model_id: qwen3.5-9b
+    source_id: Qwen/Qwen3.5-9B
+
+    # Model specifications
+    parameters: 9.0
+    context_length: 262144
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+
+  # Qwen3-5-2B
+  - model_id: qwen3.5-2b
+    source_id: Qwen/Qwen3.5-2B
+
+    # Model specifications
+    parameters: 2.0
+    context_length: 262144
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+    
+  # Qwen3-5-4B
+  - model_id: qwen3.5-4b
+    source_id: Qwen/Qwen3.5-4B
+
+    # Model specifications
+    parameters: 4.0
+    context_length: 262144
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+
+  # Qwen3-5-0.8B
+  - model_id: qwen3.5-0.8b
+    source_id: Qwen/Qwen3.5-0.8B
+
+    # Model specifications
+    parameters: 0.8
+    context_length: 262144
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+
+  # Qwen3-5-122B-w8a8
+  - model_id: qwen3.5-122b-w8a8
+    source_id: Eco-Tech/Qwen3.5-122B-A10B-w8a8-mtp
+
+    # Model specifications
+    parameters: 122.0
+    context_length: 262144
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: bfloat16
+    capabilities:
+      - completion
+
 
 # Notes:
 # - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")
