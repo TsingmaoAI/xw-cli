@@ -702,6 +702,21 @@ models:
     capabilities:
       - completion
 
+# GLM-5.1-w4a8
+  - model_id: glm-5.1-w4a8
+    source_id: Eco-Tech/GLM-5.1-w4a8
+
+    # Model specifications
+    parameters: 0.0
+    context_length: 202752
+
+    supported_devices:
+      ascend-910b:
+        - vllm:docker
+
+    tag: int4
+    capabilities:
+      - completion
 
 # Notes:
 # - model_id: Unique identifier used throughout xw (e.g., "qwen2-7b")
