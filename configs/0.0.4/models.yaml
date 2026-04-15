@@ -573,6 +573,8 @@ models:
     supported_devices:
       ascend-910b:
         - vllm:docker
+      ascend-310p:
+        - mlguider:docker
 
     tag: bfloat16
     capabilities:
@@ -704,6 +706,8 @@ models:
     supported_devices:
       ascend-910b:
         - vllm:docker
+      ascend-310p:
+        - mlguider:docker
 
     tag: bfloat16
     capabilities:
