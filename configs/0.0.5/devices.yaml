@@ -115,6 +115,66 @@ vendors:
               - IPC_LOCK
               - SYS_RESOURCE
       
+      # Ascend 910C
+      - config_key: ascend-910c
+        model_name: Ascend 910C
+        device_id: "0xd803"
+        generation: Ascend 9xx
+        topology:
+          boxes:
+            - devices: [0, 1, 2, 3]
+            - devices: [4, 5, 6, 7]
+            - devices: [8, 9, 10, 11]
+            - devices: [12, 13, 14, 15]
+        runtime_images:
+          vllm:
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:a3-openeuler
+            amd64: NONE
+
+        ext_sandboxes:
+          devices:
+            - /dev/davinci0
+            - /dev/davinci1
+            - /dev/davinci2
+            - /dev/davinci3
+            - /dev/davinci4
+            - /dev/davinci5
+            - /dev/davinci6
+            - /dev/davinci7
+            - /dev/davinci8
+            - /dev/davinci9
+            - /dev/davinci10
+            - /dev/davinci11
+            - /dev/davinci12
+            - /dev/davinci13
+            - /dev/davinci14
+            - /dev/davinci15
+            - /dev/davinci_manager
+            - /dev/devmm_svm
+            - /dev/hisi_hdc
+          volumes:
+            - /usr/local/dcmi:/usr/local/dcmi
+            - /usr/local/bin/npu-smi:/usr/local/bin/npu-smi
+            - /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/
+            - /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info
+            - /etc/ascend_install.info:/etc/ascend_install.info
+            - /root/.cache:/root/.cache
+          runtime: runc
+
+          vllm:
+            device_env: ASCEND_RT_VISIBLE_DEVICES
+            environment:
+              ASCEND_VISIBLE_DEVICES: "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15"
+              ASCEND_SLOG_PRINT_TO_STDOUT: "1"
+              ASCEND_GLOBAL_LOG_LEVEL: "3"
+            privileged: true
+            shm_size_gb: 100
+            capabilities:
+              - SYS_ADMIN
+              - SYS_RAWIO
+              - IPC_LOCK
+              - SYS_RESOURCE
+
       # Ascend 310P (Dual-chip card)
       - config_key: ascend-310p
         model_name: Ascend 310P
