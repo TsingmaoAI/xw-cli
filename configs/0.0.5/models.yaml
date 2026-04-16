@@ -558,6 +558,8 @@ models:
     supported_devices:
       ascend-910b:
         - vllm:docker
+      ascend-910c:
+        - vllm:docker
 
     capabilities:
   
