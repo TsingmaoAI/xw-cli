@@ -1108,3 +1108,33 @@ templates:
   - model_name=glm-5.1-w4a8
   - >-
     extra_args=--quantization ascend -enable-auto-tool-choice --tool-call-parser hermes --enable-chunked-prefill --enable-prefix-caching --async-scheduling --compilation-config '{"cudagraph_mode": "FULL_DECODE_ONLY" }' --additional-config '{ "fuse_muls_add": true, "multistream_overlap_shared_expert": true, "ascend_compilation_config": { "enable_npugraph_ex": true } }' --speculative-config '{ "num_speculative_tokens": 3, "method": "deepseek_mtp" }'
+- name: ascend-910b_qwen3-4b-instruct-2507_vllm
+  params:
+  - gpu_memory_utilization=0.95
+  - max_model_len=262144
+  - tensor_parallel_size=1
+  - world_size=1
+  - server_port=8000
+  - model_name=qwen3-4b-instruct-2507
+  - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser
+    qwen3
+- name: ascend-910b_qwen3-0.6b_vllm
+  params:
+  - gpu_memory_utilization=0.95
+  - max_model_len=40960
+  - tensor_parallel_size=1
+  - world_size=1
+  - server_port=8000
+  - model_name=qwen3-0.6b
+  - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser
+    qwen3
+
+- name: ascend-910b_qwen3-0.6b_vllm
+  params:
+  - gpu_memory_utilization=0.95
+  - max_model_len=40960
+  - tensor_parallel_size=1
+  - world_size=1
+  - server_port=8000
+  - model_name=qwen3-0.6b
+  - extra_args=--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3
