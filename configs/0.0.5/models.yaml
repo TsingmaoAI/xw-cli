@@ -181,7 +181,21 @@ models:
     tag: w8a8
     capabilities:
       - completion
+  # MiniMax M2.7 W8A8
+  - model_id: minimax-m2.7-w8a8
+    source_id: Eco-Tech/MiniMax-M2.7-w8a8-QuaRot
 
+    # Model specifications
+    parameters: 0.0
+    context_length: 131072
+
+    supported_devices:
+      ascend-910c:
+        - vllm:docker
+
+    tag: w8a8
+    capabilities:
+      - completion
   # GLM-4.7 W8A8 (Metax)
   - model_id: glm-4.7-w8a8
     source_id: metax-tech/GLM-4.7-W8A8
@@ -613,6 +627,8 @@ models:
         - vllm:docker
       ascend-310p:
         - mlguider:docker
+      ascend-910c:
+        - vllm:docker
 
     tag: bfloat16
     capabilities:
