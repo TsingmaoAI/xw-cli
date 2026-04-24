@@ -44,7 +44,7 @@ vendors:
             - devices: [4, 5, 6, 7]  # Group 2: Cards 4-7 interconnected
         runtime_images:
           vllm:
-            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.14.0rc1-arm64            
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:v0.18.0rc1-arm64              
             amd64: NONE
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.2.RC1-800I-A2-py311-openeuler24.03-lts-arm64
@@ -191,13 +191,13 @@ vendors:
             - devices: [6, 7]  # Physical card 3
         runtime_images:
           vllm:
-            arm64: harbor.tsingmao.com/xw-cli/mlguider:0415-310p-arm64
+            arm64: harbor.tsingmao.com/xw-cli/vllm-ascend:main-310p-arm64
             amd64: NONE
           mindie:
             arm64: harbor.tsingmao.com/xw-cli/mindie:2.3.0-300I-Duo-py311-openeuler24.03-lts-arm64
             amd64: NONE
           mlguider:
-            arm64: harbor.tsingmao.com/xw-cli/mlguider:0415-310p-arm64
+            arm64: harbor.tsingmao.com/xw-cli/mlguider:0417-310p-arm64
             amd64: NONE
         
         ext_sandboxes:

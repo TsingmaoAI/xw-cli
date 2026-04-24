@@ -588,8 +588,9 @@ templates:
 - name: ascend-310p_qwen3-32b_mlguider
   params:
   - pipeline_parallel=1
-  - tensor_parallel=4
-  - expert_parallel=1
+  - tensor_parallel_size=4
+  - expert_parallel_size=1
+  - wait_window=0.1
   - world_size=4
   - api_port=8000
   - mi_username=tsingmao-xuanwu
@@ -854,7 +855,7 @@ templates:
   - gpu_memory_utilization=0.8
   - max_model_len=32768
   - tensor_parallel_size=4
-  - expert_parallel=4
+  - expert_parallel_size=4
   - world_size=4
   - server_port=8000
   - model_name=qwen3-coder-next
@@ -862,9 +863,9 @@ templates:
   params:
   - gpu_memory_utilization=0.8
   - max_model_len=32768
-  - tensor_parallel_size=8
-  - expert_parallel=8
-  - world_size=8
+  - tensor_parallel_size=4
+  - expert_parallel_size=4
+  - world_size=4
   - server_port=8000
   - model_name=qwen3-next-80b-a3b-instruct
 - name: ascend-310p_qwen3.5-0.8b_mlguider
@@ -911,19 +912,26 @@ templates:
   params:
   - gpu_memory_utilization=0.8
   - max_model_len=32768
-  - tensor_parallel_size=4
-  - expert_parallel=4
-  - world_size=4
+  - tensor_parallel_size=2
+  - world_size=2
+  - use_npu_worker=flase
   - server_port=8000
   - model_name=qwen3.5-35b
 - name: ascend-310p_qwen3.5-122b_mlguider
   params:
   - gpu_memory_utilization=0.8
-  - max_model_len=32768
-  - tensor_parallel_size=8
-  - expert_parallel=8
-  - world_size=8
-  - server_port=8000
+  - tensor_parallel_size=4
+  - expert_parallel_size=4
+  - world_size=4
+  - num_gpu_blocks=300
+  - block_size=256
+  - state_cache_capacity=4
+  - mi_max_batch_size=4
+  - mi_max_num_batched_tokens=8192
+  - mi_max_model_len=8192
+  - mi_max_tokens=8192
+  - mi_max_paddings=-1
+  - mi_wait_window=0.1
   - model_name=qwen3.5-122b
 - name: metax-c550_glm-4.7-w8a8_vllm
   params:
