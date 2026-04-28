@@ -1208,7 +1208,6 @@ templates:
     VLLM_ASCEND_ENABLE_FUSED_MC2: '1'
     VLLM_ASCEND_ENABLE_FLASHCOMM1: '1'
   params:
-    - model_name=deepseek_v4
     - gpu_memory_utilization=0.9
     - max_model_len=65536
     - tensor_parallel_size=8
@@ -1224,10 +1223,39 @@ templates:
     - vllm_ascend_enable_fused_mc2=1
     - vllm_ascend_enable_flashcomm1=1
     - >-
-      extra_args=--host 0.0.0.0 --max-num-batched-tokens 8192 --max-num-seqs 8 --served-model-name deepseek_v4
+      extra_args=--host 0.0.0.0 --max-num-batched-tokens 8192 --max-num-seqs 16
       --enable-expert-parallel --quantization ascend
       --block-size 128 --async-scheduling
       --compilation-config {"cudagraph_mode":"FULL_DECODE_ONLY"}
       --speculative-config {"num_speculative_tokens":1,"method":"deepseek_mtp"}
       --additional-config {"enable_cpu_binding":"true","multistream_overlap_shared_expert":false}
     - image=harbor.tsingmao.com/xw-cli/vllm-ascend:deepseek-v4-flash-910c-v0.13.0rc3
+
+- name: ascend-910b_deepseek-v4-flash-w8a8-mtp_vllm
+  envs:
+    OMP_PROC_BIND: 'false'
+    OMP_NUM_THREADS: '10'
+    PYTORCH_NPU_ALLOC_CONF: 'expandable_segments:True'
+    ACL_OP_INIT_MODE: '1'
+    TRITON_ALL_BLOCKS_PARALLEL: '1'  
+    USE_MULTI_BLOCK_POOL: '1'
+  params:
+    - gpu_memory_utilization=0.9
+    - max_model_len=65536
+    - tensor_parallel_size=8
+    - world_size=8
+    - server_port=8000
+    - omp_proc_bind=false
+    - omp_num_threads=10
+    - use_multi_block_pool=1
+    - pytorch_npu_alloc_conf=expandable_segments:True
+    - acl_op_init_mode=1
+    - triton_all_blocks_parallel=1
+    - >-
+      extra_args=--host 0.0.0.0 --max-num-batched-tokens 8192 --max-num-seqs 16
+      --enable-expert-parallel --quantization ascend --trust-remote-code
+      --block-size 128 --async-scheduling
+      --compilation-config {"cudagraph_mode":"FULL_DECODE_ONLY"}
+      --speculative-config {"num_speculative_tokens":1,"method":"deepseek_mtp"}
+      --additional-config {"enable_cpu_binding":"true","multistream_overlap_shared_expert":false}
+    - image=harbor.tsingmao.com/xw-cli/vllm-ascend:deepseek-v4-flash-910b-v0.13.0rc3

@@ -787,6 +787,8 @@ models:
     supported_devices:
       ascend-910c:
         - vllm:docker
+      ascend-910b:
+        - vllm:docker
     tag: w8a8
     capabilities:
       - completion
