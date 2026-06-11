@@ -783,7 +783,7 @@ models:
   - model_id: deepseek-v4-flash-w8a8-mtp
     source_id: Eco-Tech/DeepSeek-V4-Flash-w8a8-mtp
     parameters: 0.0
-    context_length: 65536
+    context_length: 133120
     supported_devices:
       ascend-910c:
         - vllm:docker
